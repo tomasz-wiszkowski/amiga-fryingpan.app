@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,9 +10,9 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
@@ -25,7 +25,7 @@
 #include <libraries/asl.h>
 #include <proto/muimaster.h>
 #include <Generic/String.h>
-#include <Optical/Optical.h>
+#include <libclass/Optical.h>
 #include <FP/IEngine.h>
 
 #undef String
@@ -65,7 +65,7 @@ MUIPopAction::MUIPopAction(Globals &glb) :
    MUIPopup(""),
    Glb(glb)
 {
-   Glb.Loc.Add((Localization::LocaleSet*)LocaleSets, LocaleGroup);
+   Glb.Loc.AddGroup((Localization::LocaleSet*)LocaleSets, LocaleGroup);
    hHkBtnHook.Initialize(this, &MUIPopAction::buttonHandler);
    setButtonCallBack(hHkBtnHook.GetHook());
 }
@@ -197,9 +197,6 @@ String MUIPopAction::discType()
          break;
 
       case DRT_Profile_DVD_MinusRW_Sequential:
-         s = "DVD-RW";
-         break;
-
       case DRT_Profile_DVD_MinusRW_Restricted:
          s = "DVD-RW";
          break;
@@ -229,10 +226,8 @@ String MUIPopAction::discType()
          break;
 
       case DRT_Profile_BD_R_Sequential:
-         s = "BD-R";
-         break;
-
       case DRT_Profile_BD_R_RandomWrite:
+      case DRT_Profile_BD_R_PseudoOverwrite:
          s = "BD-R";
          break;
 

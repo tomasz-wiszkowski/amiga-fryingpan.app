@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,12 +10,13 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 
 #ifndef _GUIMUI_MUIMEDIA_H_
 #define _GUIMUI_MUIMEDIA_H_
@@ -45,6 +46,7 @@ protected:
       ID_Repair,
       ID_Load,
       ID_Eject,
+      ID_ChangeProtection,
 
       ID_DiscType       =  100,
       ID_SubType,
@@ -56,12 +58,12 @@ protected:
       ID_Catalog,
       ID_DiscSize,
       ID_ReadSpeeds,
-      ID_WriteSpeeds
+      ID_WriteSpeeds,
    };
 
 protected:
    Globals                   &Glb;
-   uint32                    *all;
+   iptr                      *all;
    ConfigParser              *Config;
 
    HookT<MUIMedia, BtnID, int32> hBtnHook;
@@ -70,7 +72,7 @@ protected:
    uint16                     preptype;
 
 protected:
-   uint32                     buttonClicked(BtnID id, int32 state);
+   iptr                       buttonClicked(BtnID id, int32 state);
    String                     speedsToString(DiscSpeed*);
    String                     profileToString();
    String                     subTypeToString();
@@ -84,7 +86,7 @@ public:
                              ~MUIMedia();
    bool                       start();
    void                       stop();
-   uint32                    *getObject();
+   iptr                    *getObject();
    void                       update();
 };
 

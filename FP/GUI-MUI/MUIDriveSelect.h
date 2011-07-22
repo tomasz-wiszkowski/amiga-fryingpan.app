@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,19 +10,20 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 
 #ifndef _GUIMUI_MUIDRIVESELECT_H_
 #define _GUIMUI_MUIDRIVESELECT_H_
 
 #include "MUICommon.h"
 #include <Generic/ConfigParser.h>
-#include "Components/MUIWindowMenu.h"
+#include <Generic/MUI/MUIWindowMenu.h>
 #include <Generic/HookT.h>
 #include "Globals.h"
 
@@ -32,15 +33,15 @@ protected:
    Globals                   &Glb;
    const char                *names[5]; 
    ConfigParser              *Config;
-   uint32                    *cycle;
-   uint32                    *string;
-   MUIWindowMenu             *menu;
-   uint32                    *pager;
-   uint32                    *cyclegroup;
+   iptr                      *cycle;
+   iptr                      *string;
+   GenNS::MUIWindowMenu      *menu;
+   iptr                      *pager;
+   iptr                      *cyclegroup;
    int                        currentdrive;
 
 protected:
-   HookT<MUIDriveSelect, int32, void*>    hHkBtnHook;
+   HookT<MUIDriveSelect, iptr, void*>    hHkBtnHook;
 
 protected:
    enum
@@ -51,7 +52,7 @@ protected:
    };
 
 protected:
-   virtual uint32             btnHook(int32 id, void* data);
+   virtual iptr               btnHook(iptr id, void* data);
    virtual void               rebuildCycle();
 
 public:
@@ -59,7 +60,7 @@ public:
    virtual                   ~MUIDriveSelect();
    virtual bool               start();
    virtual void               stop();
-   virtual uint32            *getObject();
+   virtual iptr              *getObject();
    virtual void               update();
 };
 

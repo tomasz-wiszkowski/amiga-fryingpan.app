@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,9 +10,9 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
@@ -79,11 +79,19 @@ MUITracksSession::MUITracksSession(ConfigParser *parent, Globals &glb) :
 
    Config = new ConfigParser(parent, "PageContents", 0);
    setButtonCallBack(hHkButton.GetHook());
-   Glb.Loc.Add((Localization::LocaleSet*)LocaleSets, LocaleGroup);
+   Glb.Loc.AddGroup((Localization::LocaleSet*)LocaleSets, LocaleGroup);
 }
 
 MUITracksSession::~MUITracksSession()
 {
+   if (0 != tracks)
+      delete tracks;
+   if (0 != target)
+      delete target;
+   tracks = 0;
+   target = 0;
+   all    = 0;
+
    delete Config;
 }
    
@@ -92,7 +100,7 @@ DbgHandler *MUITracksSession::getDebug()
    return Glb.dbg;
 }
 
-unsigned long *MUITracksSession::getObject()
+iptr *MUITracksSession::getObject()
 {
    if (NULL != all)
       return all;
@@ -125,32 +133,25 @@ bool MUITracksSession::start()
 
 void MUITracksSession::stop()
 {
-   if (0 != tracks)
-      delete tracks;
-   if (0 != target)
-      delete target;
-   tracks = 0;
-   target = 0;
-   all    = 0;
 //   Config->setValue(Cfg_TargetDir, (char*)target->getValue());
 }
 
-unsigned long MUITracksSession::construct(void*, const IOptItem* item)
+iptr MUITracksSession::construct(void*, const IOptItem* item)
 {
    Entry *e = new Entry;
    e->item = item;
    e->item->claim();
-   return (unsigned long)e;
+   return (iptr)e;
 }
 
-unsigned long MUITracksSession::destruct(void*, Entry* e)
+iptr MUITracksSession::destruct(void*, Entry* e)
 {
    e->item->dispose();
    delete e;
    return 0;
 }
 
-unsigned long MUITracksSession::display(const char** arr, Entry* e)
+iptr MUITracksSession::display(const char** arr, Entry* e)
 {
    if (NULL == e)
    {
@@ -161,7 +162,7 @@ unsigned long MUITracksSession::display(const char** arr, Entry* e)
    else
    {
       const char          *suffix;
-      unsigned long long   len = 0;
+      uint64		    len = 0;
       int                  fraction = 0;
 
       switch (e->item->getItemType())
@@ -209,7 +210,7 @@ unsigned long MUITracksSession::display(const char** arr, Entry* e)
          e->name += e->item->getCDTTitle();
       }
 
-      len      = (unsigned long long)e->item->getBlockCount() * e->item->getSectorSize();
+      len      = (uint64)e->item->getBlockCount() * e->item->getSectorSize();
       suffix   = "B";
       if (len > 1024)
       {
@@ -267,7 +268,7 @@ void MUITracksSession::update()
    Glb.CurrentEngine->Release();
 }
 
-void MUITracksSession::addRecurse(unsigned long parent, const IOptItem* data)
+void MUITracksSession::addRecurse(iptr parent, const IOptItem* data)
 {
    uint32 item;
 
@@ -288,7 +289,7 @@ void MUITracksSession::addRecurse(unsigned long parent, const IOptItem* data)
    _d(Lvl_Info, "All children have been added");
 }
 
-uint32 MUITracksSession::button(BtnID id, void* data)
+iptr MUITracksSession::button(BtnID id, void* data)
 {
    IEngine *eng = Glb.CurrentEngine->ObtainRead();
 

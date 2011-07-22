@@ -1,22 +1,3 @@
-/*
- * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation; either version 2.1
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 #include "CDText.h"
 #include <LibC/LibC.h>
 #include <Generic/Debug.h>
@@ -196,7 +177,7 @@ void CDText::closePack()
 
 void CDText::printReport(DbgHandler* __dbg)
 {
-   for (int i=0; i<packs.Count(); i++)
+   for (uint32 i=0; i<packs.Count(); i++)
    {
       _D(Lvl_Info, "%08ld: %02lx %02lx %02lx %02lx: %02lx %02lx %02lx %02lx %02lx %02lx %02lx %02lx %02lx %02lx %02lx %02lx | %02lx %02lx",
             i,
@@ -227,7 +208,7 @@ bool CDText::getDataBuffer(uint8*& tgt, int32& size)
    size = (size / 96)*96;
 
    tgt  = new uint8[size];
-   for (int i=0; i<packs.Count(); i++)
+   for (uint32 i=0; i<packs.Count(); i++)
    {
       dat = (uint8*)&packs[i];
       for (int j=0; j<6; j++)

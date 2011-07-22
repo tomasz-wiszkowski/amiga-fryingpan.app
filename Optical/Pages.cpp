@@ -1,26 +1,7 @@
-/*
- * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation; either version 2.1
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 #include "Headers.h"
 #include "Commands.h"
 
-int32 Page_Capabilities::GetMediaReadSupport(void)
+int32 Page_Capabilities::GetMediaReadSupport()
 {
    register int32 reads = DRT_Media_CD_ROM;
 
@@ -33,7 +14,7 @@ int32 Page_Capabilities::GetMediaReadSupport(void)
    return reads;
 }
 
-int32 Page_Capabilities::GetMediaWriteSupport(void)
+int32 Page_Capabilities::GetMediaWriteSupport()
 {
    register int32 writes = 0;
 
@@ -44,7 +25,7 @@ int32 Page_Capabilities::GetMediaWriteSupport(void)
    return writes;
 };
 
-int32 Page_Capabilities::GetAudioFlags(void)
+int32 Page_Capabilities::GetAudioFlags()
 {
    register int32 data = 0;
 
@@ -59,12 +40,12 @@ int32 Page_Capabilities::GetAudioFlags(void)
    return data;
 }
 
-int32 Page_Capabilities::GetAudioVolumeLevels(void)
+int32 Page_Capabilities::GetAudioVolumeLevels()
 {
    return num_volume_levels;
 }
 
-UWORD Page_Capabilities::GetCurrentWriteSpeed(void)
+UWORD Page_Capabilities::GetCurrentWriteSpeed()
 {
    if ((unsigned)PageSize() >= OFFSETWITH(Page_Capabilities, current_write_speed))
    {
@@ -74,22 +55,27 @@ UWORD Page_Capabilities::GetCurrentWriteSpeed(void)
    }
 }
 
-UWORD Page_Capabilities::GetCurrentReadSpeed(void)
+UWORD Page_Capabilities::GetCurrentWriteSpeedOld()
+{
+    return current_write_speed_old;
+}
+
+UWORD Page_Capabilities::GetCurrentReadSpeed()
 {
    return current_read_speed;
 };
 
-UWORD Page_Capabilities::GetMaximumWriteSpeed(void)
+UWORD Page_Capabilities::GetMaximumWriteSpeed()
 {
    return max_write_speed;
 };
 
-UWORD Page_Capabilities::GetMaximumReadSpeed(void)
+UWORD Page_Capabilities::GetMaximumReadSpeed()
 {
    return max_read_speed;
 };
 
-UWORD Page_Capabilities::GetBufferSize(void)
+UWORD Page_Capabilities::GetBufferSize()
 {
    return buffer_size;
 };
@@ -133,7 +119,7 @@ uint32 Page_Capabilities::GetCapabilities()
 
 int32 Page_Capabilities::GetSpeedDescriptorsCount()
 {
-   if ((unsigned)PageSize() >= OFFSET(Page_Capabilities, num_speed_performance_descriptors))
+   if ((unsigned)PageSize() >= OFFSETOF(Page_Capabilities, num_speed_performance_descriptors))
       return num_speed_performance_descriptors;
 
    return 0;
@@ -141,7 +127,7 @@ int32 Page_Capabilities::GetSpeedDescriptorsCount()
 
 int32 Page_Capabilities::GetSpeedDescriptor(int32 i)
 {
-   if ((unsigned)PageSize() <= OFFSET(Page_Capabilities, speed_performance_descriptors[i]))
+   if ((unsigned)PageSize() <= OFFSETOF(Page_Capabilities, speed_performance_descriptors[i]))
       return 0;
    if ((i >=0 ) && (i < GetSpeedDescriptorsCount()))
      return speed_performance_descriptors[i] & 0xffff;   // strip plextors cav / clv details (i guess)
@@ -170,7 +156,7 @@ void Page_Write::SetWriteType(Page_Write::WriteType t)
    }
 };
 
-void Page_Write::SetPacketSize(ULONG s)
+void Page_Write::SetPacketSize(uint32 s)
 {
    if (packet_size != s) 
    {
@@ -221,17 +207,17 @@ void Page_Write::SetLinkSize(UBYTE s)
    }
 }
 
-Page_Write::WriteType Page_Write::GetWriteType(void)
+Page_Write::WriteType Page_Write::GetWriteType()
 {
    return (Page_Write::WriteType)set1.getWriteType();
 };
 
-uint32 Page_Write::GetPacketSize(void)
+uint32 Page_Write::GetPacketSize()
 {
    return packet_size;
 }
 
-Page_Write::DataMode Page_Write::GetDataMode(void)
+Page_Write::DataMode Page_Write::GetDataMode()
 {
    return (DataMode)set1.getDataType();
 }
@@ -244,7 +230,7 @@ void Page_Write::SetDataMode(DataMode t)
    SetModified();
 }
 
-Page_Write::TrackMode Page_Write::GetTrackMode(void)
+Page_Write::TrackMode Page_Write::GetTrackMode()
 {
    return (TrackMode)set1.getTrackMode();
 }
@@ -257,7 +243,7 @@ void Page_Write::SetTrackMode(TrackMode t)
    SetModified();
 }
 
-Page_Write::SessionFormat Page_Write::GetSessionFormat(void)
+Page_Write::SessionFormat Page_Write::GetSessionFormat()
 {
    return (Page_Write::SessionFormat)set2.getSessionFormat();
 }
@@ -280,7 +266,7 @@ void Page_Write::SetTestMode(int32 f)
    SetModified();
 }
 
-int32 Page_Write::IsTestMode(void)
+int32 Page_Write::IsTestMode()
 {
    return set1.isTestMode();
 }
@@ -295,7 +281,7 @@ void Page_Write::SetMultisession(int32 f)
    SetModified();
 }
 
-int32 Page_Write::IsMultisession(void)
+int32 Page_Write::IsMultisession()
 {
    return set1.getMultisession() ? 1 : 0;
 }

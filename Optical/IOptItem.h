@@ -1,26 +1,7 @@
-/*
- * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation; either version 2.1
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
+#ifndef _OPTICAL_IOPTITEM_H_
+#define _OPTICAL_IOPTITEM_H_
 
-#ifndef _IOPTITEM_H_
-#define _IOPTITEM_H_
-
-#include "Optical.h"
+#include <libclass/Optical.h>
 #include <Generic/String.h>
 
 using namespace GenNS;
@@ -34,10 +15,11 @@ class IOptItem
 protected:
    virtual                ~IOptItem() {};
 public:
-   virtual void            claim() const                                = 0;
-   virtual void            dispose() const                              = 0;
+   virtual const IOptItem *acquire() const                              = 0;    // call this so the item does not get disposed while you use it
+   virtual void            release() const                              = 0;    // call this to inform the engine you don't need that any longer
 
-   virtual IOptItem       *addChild()                                   = 0;
+   virtual IOptItem       *addChild()                                   = 0;    // these calls are okay only for the discs
+   virtual bool		   remChild(IOptItem* child)			= 0;	// that you created.
 
    virtual EItemType       getItemType() const                          = 0;
    virtual void            setItemType(EItemType lNewType)              = 0;
@@ -103,6 +85,8 @@ public:
    virtual void            printReport(DbgHandler *dbg) const           = 0;
    virtual bool            isComplete() const                           = 0;
    virtual void            setComplete(bool)                            = 0;
+
+   /* more calls will follow */
 };
 
 #endif //_OPTITEM_H_

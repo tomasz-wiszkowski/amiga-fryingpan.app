@@ -1,13 +1,10 @@
 
 OBJS = \
-	Wrapper.o						\
+	Plug.o							\
 	Globals.o						\
 	GUI.o							\
-	MUITracks.o						\
 	MUIPageSelect.o					\
-	MUITracksISOBuilder.o			\
 	MUITracksDataAudio.o			\
-	MUITracksSession.o				\
 	MUIMedia.o						\
 	MUIContents.o					\
 	MUIDrive.o						\
@@ -19,21 +16,10 @@ OBJS = \
 	MUIPopDOSDevice.o				\
 	MUIPopUnit.o					\
 	MUICommon.o						\
-	MUIPopISOElement.o				\
 	MUIPopAction.o					\
-	Components/MUIToolBar.o			\
-	Components/MUIWindowMenu.o		\
-	Components/MUI.o				\
-	Components/MUIList.o			\
-	Components/MUITree.o			\
-	Components/MUIPopup.o			\
-	Components/MUIPopString.o		\
-	Components/MUIPopText.o			\
-	Components/MUIPopAsl.o			\
-	Components/FileReq.o			\
-	Components/MUIPictureClass.o
+	Components/MUIToolBar.o
 	
-Program			= MUI.interface
+Program			= gui.plugin
 
 TARGETS			= aros os3 morphos os4
 OBJDIRS			= Components
@@ -53,3 +39,4 @@ OS4_LIBOPTS		=
 	include ../../Generic/Makefile.mk
 
 // vim: noet ts=4
+# DO NOT DELETE

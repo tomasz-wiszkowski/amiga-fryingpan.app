@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,147 +10,179 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+
 #include "JobUpload.h"
-#include <Optical/IOptItem.h>
-#include <Optical/Optical.h>
+#include <libdata/Optical/IOptItem.h>
+#include <libclass/Optical.h>
 
-JobUpload::JobUpload(unsigned long drive, VectorT<ITrack*> &trks, bool master, bool closedisc) :
-   Job(drive)
+JobUpload::JobUpload(Globals &glb, iptr drive, RWSyncT< VectorT<IData*> > &trks, bool master, bool closedisc) :
+    Job(glb, drive),
+    tracks(trks),
+    vec(tracks.ObtainRead())
 {
-   disc     = pOptical->OptCreateDisc();
-   session  = disc->addChild();
-   
-   operation = "Recording Disc";
+    disc     = g.Optical->CreateDisc();
+    session  = disc->addChild();
 
-   hHkData.Initialize(this, &JobUpload::onData);
+    operation = "Recording Disc";
 
-   finalize    = closedisc;
-   masterize   = master;
+    finalize    = closedisc;
+    masterize   = master;
 
-   for (int i=0; i<trks.Count(); i++)
-   {
-      if (trks[i]->isValid())
-      {
-         ITrack     *t = trks[i]->getClone();
-         IOptItem   *o = session->addChild();
+    _dx(Lvl_Info, "Recording disc with flags: fin=%ld mas=%ld", finalize, masterize);
 
-         t->update();
-         t->fillOptItem(o);
+    for (uint32 i=0; i<vec.Count(); i++)
+    {
+	IData*t = vec[i];
 
-         tracks << t;
-         items  << o;
-      }
-   }
+	IOptItem   *o = session->addChild();
+	if (!t->fillOptItem(o))
+	{
+	    _dx(Lvl_Info, "Failed to add track %ld; track refuses to fill structure.", i+1);
+	    session->remChild(o);
+	    continue;
+	}
 
-   disc->setFlags((closedisc ? DIF_Disc_CloseDisc   : DIF_Disc_CloseSession) |
-                  (masterize ? DIF_Disc_MasterizeCD : 0));
-   session->setFlags(0);
-   currTrack = 0;
+	_dx(Lvl_Info, "Added track %ld", i+1);
+	Pair p = { t, o };
+	items << p;
+    }
+
+    _dx(Lvl_Info, "Setting disc flags..");
+    disc->setFlags((closedisc ? DIF_Disc_CloseDisc   : DIF_Disc_CloseSession) |
+	    (masterize ? DIF_Disc_MasterizeCD : 0));
+    session->setFlags(0);
+    currTrack = 0;
+    _dx(Lvl_Info, "Job init done");
 }
 
 JobUpload::~JobUpload()
 {
-   while (tracks.Count() > 0)
-   {
-      tracks[0]->dispose();
-      tracks >> tracks[0];
-   }
-
+    _dx(Lvl_Info, "Disposing job");
    disc->dispose();
+   tracks.Release();
+   _dx(Lvl_Info, "Done");
 }
 
 void JobUpload::execute()
- {
-   unsigned long res = 0;
+{
+    iptr res = 0;
 
-   currTrack = 0;
+    currTrack = 0;
 
-   for (int i=0; i<tracks.Count(); i++)
-   {
-      tracks[i]->setUp();
-   }
+    _dx(Lvl_Info, "Calculating layout");
+    res = g.Optical->DoMethodA(ARRAY(DRV_LayoutTracks, Drive, (int)disc));
 
-   res = pOptical->OptDoMethodA(ARRAY(DRV_LayoutTracks, Drive, (int)disc));
+    if (res == ODE_OK)
+    {
+	_dx(Lvl_Info, "Pre-configuring tracks...");
+	for (uint32 i=0; i<items.Count(); i++)
+	{
+	    // how to pass the damn structure here?
+	    _dx(Lvl_Info, "Initializing track %ld", i+1);
+	    items[i].fr->setUp(items[i].oi);
+	}
 
-   if (res == ODE_OK)
-   {
-      numBlocks = disc->getDataBlockCount();
-      currBlock = 0;
+	_dx(Lvl_Info, "Preparing for write");
+	numBlocks = disc->getDataBlockCount();
+	currBlock = 0;
 
-      pOptical->OptDoMethodA(ARRAY(DRV_LockDrive, Drive, DRT_LockDrive_Write));
-      res = pOptical->OptDoMethodA(ARRAY(DRV_UploadLayout, Drive, (int)disc));
-      
-      for (currTrack=0; currTrack<tracks.Count(); currTrack++)
-      {
-         IOptItem *item    = items[currTrack];
-         ITrack   *trak    = tracks[currTrack];
-         int32     secsize = item->getSectorSize();
-         int32     pktsize = item->getPacketSize();
+	_dx(Lvl_Info, "Locking disc");
+	g.Optical->DoMethodA(ARRAY(DRV_LockDrive, Drive, DRT_LockDrive_Write));
 
-         if (item->getItemType() != Item_Track)
-            continue;
+	_dx(Lvl_Info, "Uploading layout");
+	res = g.Optical->DoMethodA(ARRAY(DRV_UploadLayout, Drive, (int)disc));
 
-         if (pktsize == 0)
-            pktsize = 16;
+	_dx(Lvl_Info, "Commencing");
+	for (currTrack=0; currTrack<items.Count(); currTrack++)
+	{
+	    IOptItem   *item    = items[currTrack].oi;
+	    IData*	trak    = items[currTrack].fr;
+	    iptr 	    secsize  = item->getSectorSize();
+	    iptr 	    pktsize  = item->getPacketSize();
+	    iptr	    seccnt   = item->getDataBlockCount();
 
-         char *memblk = new char[(secsize * pktsize)];
+	    if (item->getItemType() != Item_Track)
+		continue;
 
-         ASSERT(memblk != 0);
+	    _dx(Lvl_Info, "Track %ld will record %ld blocks of %ld size with fixed packet length=%ld", currTrack+1, seccnt, secsize, pktsize);
+	    if (pktsize == 0)
+		pktsize = 16;
 
-         if (memblk != 0)
-         {
-            res = trak->read(item, memblk, hHkData.GetHook());
-            delete [] memblk;
-         }
-         else
-         {
-            request("ERROR", "Unable to allocate memory (%ld x %ld = %ld bytes)!\nOperation aborted.", "Ok", ARRAY(secsize, pktsize, secsize*pktsize));
-            break;
-         }
+	    char *memblk = new char[(secsize * pktsize)];
 
-         if (res != 0)
-            break;
-      }      
- 
-      for (int i=0; i<tracks.Count(); i++)
-      {
-         tracks[i]->cleanUp();
-      }
+	    ASSERT(memblk != 0);
 
-      pOptical->OptDoMethodA(ARRAY(DRV_CloseDisc, Drive, finalize ? DRT_Close_Finalize : DRT_Close_Session));
-      pOptical->OptDoMethodA(ARRAY(DRV_LockDrive, Drive, DRT_LockDrive_Unlock));
+	    if (memblk != 0)
+	    {
+		_dx(Lvl_Info, "Memory allocated.");
+		while (seccnt != 0)
+		{
+		    iptr xfer = seccnt <? pktsize;
 
-      if (res != 0)
-      {
-         request("Error", "Error during write process. Operation aborted.", "Proceed", 0);
-      }
-   }
-   else
-   {
-      request("Information", "Track layout failed (%ld). Disc will not be written to.", "Proceed", ARRAY(res));
-   }
+		    _dx(Lvl_Info, "Reading data from track");
+		    res = trak->readData(memblk, xfer);
+
+		    if (!res)
+		    {
+			_dx(Lvl_Info, "Reader aborted");
+			break;
+		    }
+
+		    _dx(Lvl_Info, "Writing data to disc");
+		    res = (EOpticalError)g.Optical->DoMethodA(ARRAY(DRV_WriteSequential, Drive, (iptr)memblk, xfer));
+		    if (res != ODE_OK)
+			break;
+
+		    currBlock += xfer;
+		    seccnt -= xfer;
+		}
+
+		_dx(Lvl_Info, "Disposing memory");
+		delete [] memblk;
+	    }
+	    else
+	    {
+		request("ERROR", "Unable to allocate memory (%ld x %ld = %ld bytes)!\nOperation aborted.", "Ok", ARRAY(secsize, pktsize, secsize*pktsize));
+		break;
+	    }
+
+	    if (res != 0)
+		break;
+	}      
+
+	_dx(Lvl_Info, "Cleaning up items");
+	for (uint32 i=0; i<items.Count(); i++)
+	{
+	    _dx(Lvl_Info, "Cleanup item %ld", i+1);
+	    items[i].fr->cleanUp();
+	}
+
+	_dx(Lvl_Info, "Closing disc...");
+	g.Optical->DoMethodA(ARRAY(DRV_CloseDisc, Drive, finalize ? DRT_Close_Finalize : DRT_Close_Session));
+	_dx(Lvl_Info, "Unlocking drive");
+	g.Optical->DoMethodA(ARRAY(DRV_LockDrive, Drive, DRT_LockDrive_Unlock));
+
+	if (res != 0)
+	{
+	    request("Error", "Error during write process. Operation aborted.", "Proceed", 0);
+	}
+    }
+    else
+    {
+	request("Information", "Track layout failed (%ld). Disc will not be written to.", "Proceed", ARRAY(res));
+    }
+    _dx(Lvl_Info, "Done");
 }
 
-uint32 JobUpload::onData(void* mem, int sectors)
+void JobUpload::onError(EOpticalError ret)
 {
-   EOpticalError ret = ODE_OK;
-
-   if (sectors == 0)
-   {
-      // we're done with iso image
-      return ODE_OK;
-   }
-
-   currBlock += sectors;
-   ret = (EOpticalError)pOptical->OptDoMethodA(ARRAY(DRV_WriteSequential, Drive, (int)mem, sectors));
-
    switch (ret)
    {
       case ODE_OK:
@@ -293,19 +325,19 @@ uint32 JobUpload::onData(void* mem, int sectors)
          break;
     }
 
+   _dx(Lvl_Info, "Operation failed with result %ld (%s)", ret, (iptr)operation.Data());
+
    if (ret != ODE_OK)
    {
-      operation += "\nwhile transferring\n%ld sectors from %08lx";
-      request("Error during write", operation.Data(), "Abort", ARRAY(sectors, (int)mem));
+      operation += "\nwhile writing disc";
+      request("Error during write", operation.Data(), "Abort", 0);
    }
-
-   return (ret == ODE_OK);
 }
 
 
-unsigned long JobUpload::getProgress()
+uint32 JobUpload::getProgress()
 {
-   unsigned long long s1, s2;
+   uint64 s1, s2;
 
    s2 = numBlocks;
    s1 = currBlock;
@@ -315,7 +347,7 @@ unsigned long JobUpload::getProgress()
       s1 >>= 1;
    }
 
-   return ((long)s1 * 65535) / (long)s2;
+   return ((iptr)s1 * 65535) / (iptr)s2;
 }
 
 const char *JobUpload::getActionName()

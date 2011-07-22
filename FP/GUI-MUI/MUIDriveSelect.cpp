@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,9 +10,9 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
@@ -56,11 +56,11 @@ MUIDriveSelect::MUIDriveSelect(ConfigParser* parent, Globals &glb) :
    menu = 0;
 
    hHkBtnHook.Initialize(this, &MUIDriveSelect::btnHook);
-   Glb.Loc.Add((Localization::LocaleSet*)&LocaleSets, LocaleGroup);
+   Glb.Loc.AddGroup((Localization::LocaleSet*)&LocaleSets, LocaleGroup);
    currentdrive = Config->getValue("CurrentDrive", currentdrive);
 }
 
-uint32 MUIDriveSelect::btnHook(int32 id, void* data)
+iptr MUIDriveSelect::btnHook(iptr id, void* data)
 {
    switch (id)
    {
@@ -144,7 +144,7 @@ void MUIDriveSelect::stop()
    menu = 0;
 }
 
-uint32 *MUIDriveSelect::getObject()
+iptr *MUIDriveSelect::getObject()
 {
    if (menu == 0)
    {

@@ -1,71 +1,16 @@
-/*
- * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation; either version 2.1
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 #ifndef __COMMANDS_H
 #define __COMMANDS_H
 
 #include "Various.h"
-#ifndef __mc68000
-#pragma pack(1)
-#endif
 
 #include <Generic/String.h>
 #include <Generic/DynList.h>
 #include <Generic/Types.h>
 #include "IOptItem.h"
-
-#define OFFSET(type, field) \
-   ((size_t)(&((type*)1)->field)-1)
-
-#define OFFSETWITH(type, field) \
-   (((size_t)(&((type*)1)->field))+sizeof(type::field)-1)
-
+#include "SCSI/uniform.h"
+#include "SCSI/SCSICommand.h"
 
 using namespace GenNS;
-
-class aByte
-{
-   uint8       byte;
-public:
-   uint8       getField(int8 off, int8 len);
-   aByte      &setField(int8 off, int8 len, uint8 data);
-};
-
-class aWord
-{
-   uint16      word;
-public:
-               operator uint16();
-   aWord      &operator =(uint16 data);
-   uint16      getField(int8 off, int8 len);
-   aWord      &setField(int8 off, int8 len, uint16 data);
-};
-
-class aLong
-{
-   uint32      word;
-public:
-               operator uint32();
-   aLong      &operator =(uint32 data);
-   uint32      getField(int8 off, int8 len);
-   aLong      &setField(int8 off, int8 len, uint32 data);
-};
 
 
 struct TrackInfo
@@ -358,12 +303,12 @@ private:
 
 public:
 
-   inline int32  TotalSize(void)
+   int32  TotalSize(void)
    {  
       return length+2;      
    };
   
-   inline void*GetPage()
+   void*GetPage()
    {
       return &scsidata[scsi];
    }
@@ -495,6 +440,7 @@ public:
    int32            GetAudioFlags();
    int32            GetAudioVolumeLevels();
    uint16           GetCurrentWriteSpeed();
+   uint16           GetCurrentWriteSpeedOld();
    uint16           GetCurrentReadSpeed();
    uint16           GetMaximumWriteSpeed();
    uint16           GetMaximumReadSpeed();
@@ -672,333 +618,6 @@ public:
    }
 };
 
-
-class DVD_Structure
-{
-private:
-   aWord       len;
-   aWord       resvd;
-
-public:
-   int32         Length()
-   {
-      return len+2;
-   }
-};
-
-template <class T=class DVD_Structure>
-class DVDStructure 
-{
-   T*       structure;
-
-public:
-                        DVDStructure()
-   {
-      structure = 0;
-   }      
-
-                        DVDStructure(DVD_Structure* str)
-   {
-      *this = str;
-   }
-                 
-                       ~DVDStructure()
-   {
-      delete [] (structure);
-      structure = 0;
-   }      
-   
-   DVDStructure<T>     &operator =(DVD_Structure *t)
-   {
-      if (structure)
-         delete [] (structure);
-      structure = (T*)t;
-      return *this;
-   }
-
-   T                   *operator->()
-   {
-      return structure;
-   }
-
-   bool                 IsValid()
-   {
-      return (structure != 0) ? true : false;
-   }
-};
-
-class DVD_Physical : public DVD_Structure
-{
-public:
-   enum LayerType
-   {
-      Layer_Embossed = 0,
-      Layer_Recordable,
-      Layer_Rewritable,
-      Layer_Unknown
-   };
-
-   enum DiscType
-   {
-      Disc_DVD_ROM = 0,
-      Disc_DVD_RAM,
-      Disc_DVD_MinusR,
-      Disc_DVD_MinusRW,
-
-      Disc_DVD_PlusRW=9,
-      Disc_DVD_PlusR,
-
-      Disc_DVD_PlusRW_DL=13,
-      Disc_DVD_PlusR_DL
-   };
-private:
-   struct _1 : public aLong
-   {
-      uint8 getBookType()        { return getField(28, 4); }
-      uint8 getPartVersion()     { return getField(24, 4); }
-      uint8 getDiscSize()        { return getField(20, 4); }
-      uint8 getMaxRate()         { return getField(16, 4); }
-      uint8 getLayerCount()      { return getField(13, 2); }
-      bool  isTrackPath()        { return getField(12, 1); }
-      uint8 getLayerType()       { return getField(8, 4);  }
-      uint8 getLinearDensity()   { return getField(4, 4);  }
-      uint8 getTrackDensity()    { return getField(0, 4);  }
-   } conf;
-
-   aLong             start_physical_sector;
-   aLong             end_physical_sector;
-   aLong             end_physical_sector_layer0;
-
-   struct _2 : public aByte
-   {
-      bool isBurstCuttingAreaPresent() { return getField(7, 1); }
-   } bca __attribute__((packed));
-
-// medium-specific data to follow.
-
-public:
-   int32               GetDiscSize()
-   {
-      return conf.getDiscSize();
-   }
-
-   int32               GetNumLayers()
-   {
-      return conf.getLayerCount();
-   }
-
-   LayerType         GetLayerType()
-   {
-      return (LayerType)conf.getLayerType();
-   };
-
-   DiscType          GetDiscType()
-   {
-      return (DiscType)conf.getBookType();
-   }
-
-   bool              BCAPresent()
-   {
-      return bca.isBurstCuttingAreaPresent();
-   }
-};
-
-class DVD_Copyright : public DVD_Structure
-{
-   enum ProtectionType
-   {
-      Prot_None,
-      Prot_CSS,
-      Prot_CPRM,
-
-      Prot_Unknown
-   };
-
-protected:
-   uint8             protection_type;
-   uint8             region_management_information;      // each bit for one of eight regions
-   uint16            reserved;                           // where disc can be played
-
-public:  
-   ProtectionType    GetProtectionType()
-   {
-      return (ProtectionType)protection_type;
-   }
-
-   uint8             RegionsAllowed()
-   {
-      return region_management_information;
-   }
-};
-
-class DVD_DiscKey: public DVD_Structure
-{
-protected:
-   uint8       key[2048];
-
-public:
-   uint8      *GetKey()
-   {
-      return (uint8*)&key;
-   }
-};
-
-class DVD_BurstCutArea : public DVD_Structure
-{
-protected:
-   uint8       bca[0];
-
-public:
-   uint8      *GetBCA()
-   {
-      return (uint8*)&bca;
-   }
-};
-
-class DVD_Manufacturer : public DVD_Structure
-{
-protected:
-   uint8       manufacturing_info[];
-
-public:
-   uint8      *GetManufacturingInfo()
-   {
-      return (uint8*)&manufacturing_info;
-   }
-};
-
-class DVD_CopyrightMgmt : public DVD_Structure
-{
-protected:
-   uint8       copyright_mgmt;
-   uint8       resvd0[3];
-
-public:
-   // these fields make sense only with minus r(w) and rom media.
-   bool        IsCPM()        
-   {
-      return (copyright_mgmt & 0x80) ? true : false;
-   }
-
-   bool        IsCPSector()
-   {
-      return (copyright_mgmt & 0x40) ? true : false;
-   }
-
-   bool        UseCSS()
-   {
-      if (IsCPSector())
-      {
-         return (copyright_mgmt & 7) == 0;
-      }
-      return false;
-   }
-
-   bool        UseCPPM()
-   {
-      if (IsCPSector())
-      {
-         return (copyright_mgmt & 7) == 1;
-      }
-      return false;
-   }
-};
-
-class DVD_MediaIdentifier : public DVD_Structure
-{
-protected:
-   uint8       media_id_data[0];
-
-public:
-   uint8      *GetMediaID()
-   {
-      return (uint8*)&media_id_data;
-   };
-};
-
-class DVD_MediaKeyBlock : public DVD_Structure
-{
-protected:
-   uint8       media_key_block[0];
-
-public:
-   uint8      *GetMediaKeyBlock()
-   {
-      return (uint8*)&media_key_block;
-   }
-};
-
-class DVD_PreRecordedLeadIn : public DVD_Structure
-{
-protected:
-   uint8             field_id_1;
-   uint8             disc_application_code;
-   
-   struct _1 : public aLong
-   {
-      uint8  getDiscPhysicalSize()        { return getField(24, 8); }
-      uint32 getLastRecordableAddress()   { return getField(0, 24); }
-   } size __attribute__((packed));
-
-   struct _2 : public aWord
-   {
-      uint8  getPartVersion()             { return getField(12, 4);  }
-      uint8  getExtensionCode()           { return getField(8, 4);   }
-   } part __attribute__((packed));
-
-   uint8             field_id_2;
-   uint8             opc_suggested_code;
-   uint8             wavelength_code;
-   uint8             write_strategy_code1[4];
-   uint8             reserved1;
-
-   uint8             field_id_3;
-   uint8             manufacturer1[6];
-   uint8             reserved2;
-
-   uint8             field_id_4;
-   uint8             manufacturer2[6];
-   uint8             reserved3;
-
-   uint8             field_id_5;
-   uint8             write_strategy_code2[6];
-   uint8             reserved4;
-
-public:
-
-   String            GetManufacturer()
-   {
-      String s;
-      if (field_id_3 == 3)
-         s += (char*)&manufacturer1;
-      if (field_id_4 == 4)
-         s += (char*)&manufacturer2;
-
-      return s;
-   }
-};
-
-class DVD_DiscControlBlock : public DVD_Structure
-{
-   aLong             id;
-   aLong             unknown_content_actions;
-   char              vendor[32];
-public:
-   uint32            GetID()
-   {
-      return id;
-   }
-
-   String            GetVendor()
-   {
-      char x[33];
-      String s;
-      strncpy(x, vendor, 32);
-      x[32] = 0;
-      s = (char*)&x;
-      return s;
-   }
-};
 
 
 struct TOC_Entry 
@@ -1212,7 +831,7 @@ struct TOC_CDText
    aWord             resvd0;
    TOC_CDTextEntry   items[0];
 
-   TList<String*>   *MergeBlocks(int32);
+   VectorT<String> *MergeBlocks(int32);
 
    public:
 
@@ -1220,12 +839,12 @@ struct TOC_CDText
       {  return (length-2)/sizeof(TOC_CDTextEntry);         };
 
 
-   TList<String*>   *GetTitles(void);
-   TList<String*>   *GetPerformers(void);
-   TList<String*>   *GetSongWriters(void);
-   TList<String*>   *GetComposers(void);
-   TList<String*>   *GetArrangers(void);
-   TList<String*>   *GetMessages(void);
+   VectorT<String>   *GetTitles(void);
+   VectorT<String>   *GetPerformers(void);
+   VectorT<String>   *GetSongWriters(void);
+   VectorT<String>   *GetComposers(void);
+   VectorT<String>   *GetArrangers(void);
+   VectorT<String>   *GetMessages(void);
 };
 
 struct SUB_Header
@@ -1408,128 +1027,20 @@ public:
 };
 
 
-
-class SCSICommand : public SCSICmd
-{
-   protected:
-   unsigned char  cmd[16];
-   class DriveIO *io;
-   uint32         max_attempts;
-   uint32         scsi_error;
-   int32          optical_error;
-
-   unsigned       need_probe:1;
-   unsigned       dump_data:1;
-
-   char          *cmdname;
-
-   public:
-
-                   SCSICommand(DriveIO*);
-   virtual        ~SCSICommand(void)
-      {                                               };
-
-   virtual  int32    Go(void);
-
-   virtual  int32    onInit(void)
-      {  return ODE_OK;                               };
-
-   virtual  int32    onExit(void)
-      {  return ODE_OK;                               };
-
-   virtual  int32    onLoop(void)
-      {  DOS->Delay(20);  return ODE_OK;              };
-
-   virtual  int32    onProbe(int32 x, int32 y)
-      {  return x ? ODE_CommandError: ODE_OK;         };
-
-   inline   uint32  MaxAttempts(void)
-      {  return max_attempts;                         };
-
-   inline   int32    Cmd(int32 x)
-      {  return cmd[x];                               };
-
-   inline   uint8 *Cmd(void)
-      {  return (uint8*)&cmd;                         };
-
-   inline   uint32  CmdLength(void)
-      {  return scsi_CmdLength;                       };
-
-   inline   char*  CmdName()
-   {
-      return cmdname;
-   };
-
-   inline   int32    NeedProbe(void)
-      {  return need_probe;                           };
-
-   inline   uint8* Data(void)
-      {  return (uint8*)scsi_Data;                    };
-
-   inline   int32    DataLength(void)
-      {  return scsi_Length;                          };
-
-   inline   uint32  SCSIError(void)
-      {  return scsi_error;                           };
-
-   inline   int32    OpticalError(void)
-      {  return optical_error;                        };
-
-   inline   int32    DebugDumpData(void)
-      {  return dump_data;                            };
-};
-
-class cmd_ReadFormatCapacities : public SCSICommand
-{
-   struct _fmt_capacity
-   {
-      aLong    num_blocks;
-      struct _1 : protected aLong
-      {
-         uint8  getType1() { return getField(26, 6); }
-         uint8  getType2() { return getField(24, 2); }
-         uint32 getParam() { return getField(0, 24); }
-      } conf;
-   };
-
-   struct _readcaps {
-      uint8                                     pad0[3];
-      uint8                                     length;
-      cmd_ReadFormatCapacities::_fmt_capacity   capacities[0];
-   };
-
-
-   _readcaps  *caps;
-
-   public:
-
-    cmd_ReadFormatCapacities(DriveIO*);
-   ~cmd_ReadFormatCapacities(void);
-   int32                                    onInit(void);
-   int32                                    onProbe(int32, int32);
-   int32                                    onExit(void);
-
-   int32                                    IsFormatted(void);
-   int32                                    GetMaxCapacity(void);
-   int32                                    GetMaxPacketLength(void);
-};
-
 class cmd_TestUnitReady : public SCSICommand
 {
    public:
 
-                  cmd_TestUnitReady(DriveIO*);
-   virtual       ~cmd_TestUnitReady() { };
-   int32            onInit(void);
+                cmd_TestUnitReady(DriveIO &, DriveStatus&);
+   virtual	~cmd_TestUnitReady() { };
+   bool onInit();
 };
 
 class cmd_Reset: public SCSICommand
 {
-   public:
-
-                  cmd_Reset(DriveIO*);
-   virtual       ~cmd_Reset() { };
-   int32            onInit(void);
+public:
+    cmd_Reset(DriveIO &, DriveStatus&);
+    bool onInit(void);
 };
 
 class cmd_Inquiry : public SCSICommand
@@ -1614,28 +1125,28 @@ class cmd_Inquiry : public SCSICommand
       Type_ObjectAccess
    };
 
-               cmd_Inquiry(DriveIO*);
+               cmd_Inquiry(DriveIO &, DriveStatus&);
    virtual    ~cmd_Inquiry(void);
 
-   int32         onInit(void);
-   int32         onExit(void);
+   bool onInit(void);
+   void onExit(bool ok, uint32 err);
 
-   inline char *ProductID(void)
+   char *ProductID(void)
       {  return product_id;                              };
 
-   inline char *ProductVersion(void)
+   char *ProductVersion(void)
       {  return product_version;                         };
 
-   inline char *VendorID(void)
+   char *VendorID(void)
       {  return vendor_id;                               };
 
-   inline int32   DriveType(void)
+   int32   DriveType(void)
       {  return inquiry_data->flags.getDeviceType();     };
 
-   inline int32   SupportedStandard(void)
+   int32   SupportedStandard(void)
       {  return inquiry_data->flags.getVersion();         };
 
-   inline char *FirmwareVersion(void)
+   char *FirmwareVersion(void)
       {  return firmware_version;                        };
 };
 
@@ -1654,167 +1165,12 @@ public:
    };
 
 public:
-                        cmd_Mode(DriveIO*);
+                        cmd_Mode(DriveIO &, DriveStatus&);
    virtual             ~cmd_Mode();
    Page_Header         *GetPage(int32);
-   int32                  SetPage(Page_Header*);
-   int32                  onInit(void);
-   int32                  onProbe(int32, int32);
-   int32                  onExit(void);
-};
-
-class cmd_GetConfiguration : public SCSICommand
-{
-
-   struct _feature
-   {
-      aLong    length;
-      aWord    resvd;
-      aWord    current_profile;
-      uint8    profiles[0];
-   };
-
-
-   _feature   *feature_data;
-   uint32       read_media;
-   uint32       write_media;
-
-   public:
-
-   enum FeatureId {
-      Feature_ProfileList           =  0,
-      Feature_Core                  =  1,
-      Feature_Morphing              =  2,
-      Feature_RemovableMedium       =  3,
-      Feature_WriteProtect          =  4,
-
-      Feature_RandomReadable        =  0x10,
-      Feature_MultiRead             =  0x1d,
-      Feature_CDRead                =  0x1e,
-      Feature_DVDRead               =  0x1f,
-
-      Feature_RandomWritable        =  0x20,
-      Feature_StreamWritable        =  0x21,
-      Feature_SectorErasable        =  0x22,
-      Feature_Formattable           =  0x23,
-      Feature_HWDefectManagement    =  0x24,
-      Feature_WriteOnce             =  0x25,
-      Feature_RestrictedOverwrite   =  0x26,
-      Feature_CD_RW_CAV             =  0x27,
-      Feature_CD_MRW                =  0x28,
-      Feature_DefectReporting       =  0x29,
-      Feature_DVD_PlusRW            =  0x2a,
-      Feature_DVD_PlusR             =  0x2b,
-      Feature_RigidOverwrite        =  0x2c,
-      Feature_CD_TrackAtOnce        =  0x2d,
-      Feature_CD_SessionAtOnce      =  0x2e,
-      Feature_DVD_MinusR_RW_Write   =  0x2f,
-
-      Feature_DD_CD_Read            =  0x30,
-      Feature_DD_CD_R_Write         =  0x31,
-      Feature_DD_CD_RW_Write        =  0x32,
-      Feature_CD_RW_MediaWriteSupp  =  0x37,    // supported media types
-      Feature_BD_R_PseudoOverwrite  =  0x38,
-      Feature_DVD_PlusRW_DualLayer  =  0x3a,
-      Feature_DVD_PlusR_DualLayer   =  0x3b,
-      Feature_BD_Read               =  0x40,
-      Feature_BD_Write              =  0x41,
-
-      Feature_PowerManagement       =  0x100,
-      Feature_SMART                 =  0x101,
-      Feature_Changer               =  0x102,
-      Feature_ExternalAudioPlay     =  0x103,
-      Feature_MicrocodeUpgradable   =  0x104,
-      Feature_Timeout               =  0x105,
-      Feature_DVD_CSS               =  0x106,
-      Feature_RealTimeStreaming     =  0x107,
-      Feature_DriveSerialNumber     =  0x108,
-      Feature_MediaSerialNumber     =  0x109,   // SPC3 - Command AB/01 - ServiceAction!!!
-      Feature_DiscControlBlocks     =  0x10a,
-      Feature_DVD_CPRM              =  0x10b,
-      Feature_FirmwareInformation   =  0x10c
-   };
-
-   struct Feature
-   {
-   private:
-      aWord    id;
-      struct _1 : protected aByte
-      {
-         uint8 getVersion()   { return getField(2, 4); }
-         bool  isPersistent() { return getField(1, 1); }
-         bool  isCurrent()    { return getField(0, 1); }  
-      } type __attribute__((packed));
-      uint8    length;
-
-   public:
-      int32       IsCurrent(void)      {  return type.isCurrent();                     };
-      FeatureId   GetId()              {  return (FeatureId)(int16)id;                 };
-      Feature*    Next()               {  return (Feature*)(((uint32)this)+length+4);  };
-      int32       GetLength()          {  return length+4;                             };
-      APTR        GetBody()            {  return &((uint8*)this)[4];                   };
-      int32       GetBodyLength()      {  return length;                               };
-   };
-
-   struct feat_ProfileList : public Feature
-   {
-      struct feat_ProfileItem
-      {
-         aWord    profile;
-         struct _1 : protected aWord
-         {
-            bool isCurrent() { return getField(8, 1); }
-         } conf __attribute__((packed));
-      };
-
-      cmd_GetConfiguration::feat_ProfileList::feat_ProfileItem  items[0];
-   };
-
-   struct feat_DVDPlusWrite : public Feature
-   {
-      struct _1 : protected aLong
-      {
-         bool isWritable() { return getField(24, 1); }
-      } conf __attribute__((packed));
-   };
-
-   struct feat_DVDMinusWrite : public Feature
-   {
-      struct _1 : protected aLong
-      {
-         bool doesBurnProof() { return getField(30, 1); }
-         bool doesTestWrite() { return getField(26, 1); }
-         bool isReWritable()  { return getField(25, 1); }
-      } conf __attribute__((packed));
-   };
-
-   struct feat_CDWrite : public Feature
-   {
-      struct _1 : protected aLong
-      {
-         bool doesBurnProof() { return getField(30, 1); }
-         bool doesTestWrite() { return getField(26, 1); }
-         bool isReWritable()  { return getField(25, 1); }
-      } conf __attribute__((packed));
-   };
-
-   struct feat_ControlBlocks : public Feature
-   {
-      uint32         features[0];
-   };
-
-                                      cmd_GetConfiguration(DriveIO*);
-   virtual                              ~cmd_GetConfiguration(void);
-
-   int32                                    onInit(void);
-   int32                                    onProbe(int32, int32);
-   int32                                    onExit(void);
-
-   int32                                    GetCurrentProfile(void);
-   struct cmd_GetConfiguration::Feature  *GetFeature(FeatureId);
-   uint32                                  GetMediaReadSupport(void);
-   uint32                                  GetMediaWriteSupport(void);
-
+   bool SetPage(Page_Header*);
+   bool onInit();
+   bool onProbe(bool, uint32);
 };
 
 class cmd_ReadDiscInfo : public SCSICommand
@@ -1828,11 +1184,10 @@ class cmd_ReadDiscInfo : public SCSICommand
 
    public:
 
-                        cmd_ReadDiscInfo(DriveIO*);
+                        cmd_ReadDiscInfo(DriveIO &, DriveStatus&);
    virtual             ~cmd_ReadDiscInfo(void);
-   int32                  onInit(void);
-   int32                  onProbe(int32, int32);
-   int32                  onExit(void);
+   bool onInit();
+   bool onProbe(bool, uint32);
    DiscInfo            *GetData(void)
       {  return dinfo;     }
    long                 GetLeadInLength();
@@ -1852,11 +1207,10 @@ class cmd_ReadTrackInfo : public SCSICommand
       Track_Invisible = 0xffffffff
    };
 
-                     cmd_ReadTrackInfo(DriveIO*);
+                     cmd_ReadTrackInfo(DriveIO &, DriveStatus&);
    virtual          ~cmd_ReadTrackInfo(void);
-   int32               onInit(void);
-   int32               onProbe(int32, int32);
-   int32               onExit(void);
+   bool onInit();
+   bool onProbe(bool, uint32);
 
    TrackInfo        *GetData(void)
       {  return tinfo;              };
@@ -1894,29 +1248,58 @@ class cmd_ReadTOC : public SCSICommand
       Type_CDText    =  5
    };
 
-                                          cmd_ReadTOC(DriveIO*);
+                                          cmd_ReadTOC(DriveIO &, DriveStatus&);
    virtual                               ~cmd_ReadTOC(void);
-   int32                                    onInit(void);
-   int32                                    onProbe(int32, int32);
-   int32                                    onExit(void);
+   bool onInit();
+   bool onProbe(bool, uint32);
 
    void                                   SelectType(uint32 x)
       {  type = x;                                             };
 
    TOC_FullTOC                           *GetFullTOC(bool msf=true)
-      {  type = Type_FullTOC; wantmsf = msf; Go(); return (TOC_FullTOC*)toc;     };
+   {	    
+       type = Type_FullTOC; 
+       wantmsf = msf; 
+       if (Go())	
+	   return (TOC_FullTOC*)toc; 
+       return 0;    
+   };
 
    TOC_PrimitiveTOC                      *GetTOC(bool msf=true)
-      {  type = Type_TOC; wantmsf = msf; Go(); return (TOC_PrimitiveTOC*)toc;    };
+   {  
+       type = Type_TOC; 
+       wantmsf = msf; 
+       if (Go()) 
+	   return (TOC_PrimitiveTOC*)toc;
+       return 0;
+   };
 
    TOC_PMA                               *GetPMA()
-      {  type = Type_PMA; wantmsf = false; Go(); return (TOC_PMA*)toc;           };
+   {  
+       type = Type_PMA; 
+       wantmsf = false; 
+       if (Go()) 
+	   return (TOC_PMA*)toc;           
+       return 0;
+   };
 
    TOC_ATIP                              *GetATIP(void)
-      {  type = Type_ATIP; wantmsf = false; Go(); return (TOC_ATIP*)toc;         };
+   {  
+       type = Type_ATIP; 
+       wantmsf = false; 
+       if (Go()) 
+	   return (TOC_ATIP*)toc;         
+       return 0;
+   };
 
    TOC_CDText                            *GetCDText(void)
-      {  type = Type_CDText; wantmsf = false; Go(); return (TOC_CDText*)toc;     };
+   {  
+       type = Type_CDText; 
+       wantmsf = false; 
+       if (Go()) 
+	   return (TOC_CDText*)toc;     
+       return 0;
+   };
 
 };
 
@@ -1934,9 +1317,9 @@ public:
       Type_ISRC      =  3
    };
 
-                     cmd_ReadSubChannel(DriveIO*);
-   int32               onInit(void);
-   int32               onProbe(int32, int32);
+                     cmd_ReadSubChannel(DriveIO &, DriveStatus&);
+   bool onInit();
+   bool onProbe(bool, uint32);
    SUB_Position     *getPosition();
    SUB_MCN          *getMCN();
    SUB_ISRC         *getISRC(int32 track);   
@@ -1947,9 +1330,9 @@ class cmd_Seek : public SCSICommand
 {
    uint32            sector;
 public:
-                     cmd_Seek(DriveIO*);
-   int32               onInit();
-   int32               seek(uint32 sector);
+                     cmd_Seek(DriveIO &, DriveStatus&);
+   bool onInit();
+   bool                seek(uint32 sector);
 };
 
 class cmd_Play : public SCSICommand
@@ -1957,9 +1340,9 @@ class cmd_Play : public SCSICommand
    int32             start;
    int32             end;
 public:
-                     cmd_Play(DriveIO*);
-   int32               onInit();
-   int32               play(int32 start, int32 end);
+                     cmd_Play(DriveIO &, DriveStatus&);
+   bool onInit();
+   bool                play(int32 start, int32 end);
 };
 
 class cmd_Blank : public SCSICommand
@@ -1981,71 +1364,11 @@ class cmd_Blank : public SCSICommand
    };
 
 
-                  cmd_Blank(DriveIO*);
+                  cmd_Blank(DriveIO &, DriveStatus&);
    virtual       ~cmd_Blank() { };
-   int32            onInit();
+   bool onInit();
    void           setType(cmd_Blank::BlankType t, uint32 num);
    void           setImmediate(bool f);
-};
-
-class cmd_Format : public SCSICommand
-{
-   public:
-
-   enum FormatType {
-      Format_FullFormat             = 0x00,
-      Format_SpareAreaExpansion     = 0x01,
-      Format_ZoneReformat           = 0x04,
-      Format_ZoneFormat             = 0x05,
-      Format_CD_DVD_FullFormat      = 0x10,
-      Format_CD_DVD_GrowSession     = 0x11,
-      Format_CD_DVD_AddSession      = 0x12,
-      Format_CD_DVD_QuickGrowSession= 0x13,
-      Format_DVDM_QuickAddSession   = 0x14,
-      Format_DVDM_QuickFormat       = 0x15,
-      Format_MRW_Quick_Obsolete     = 0x20,
-      Format_MRW_FullFormat         = 0x24,
-      Format_DVDP_FullFormat        = 0x26
-   };
-
-   private:
-///
-   struct _fmt_data
-   {
-      uint8    resvd0;
-      struct _1 : protected aByte
-      {
-         void setOptionsValid()  { setField(7, 1, 1); }
-         void setDisablePrimary(){ setField(6, 1, 1); }
-         void setCertificates()  { setField(5, 1, 1); }
-         void setStopFormat()    { setField(4, 1, 1); }
-         void setInitPattern()   { setField(3, 1, 1); }
-         void setTryOut()        { setField(2, 1, 1); }
-         void setImmediate()     { setField(1, 1, 1); }
-         void setVendorSpecific(){ setField(0, 1, 1); }
-      } flags __attribute__((packed));
-
-      aWord    length;     // 8
-      aLong    size;
-
-      struct _2 : protected aLong
-      {
-         void setType(uint8 t)   { setField(26, 6, t); }
-         void setParam(uint32 t) { setField(0, 24, t); }
-      } type __attribute__((packed));
-   };
-
-   _fmt_data  *fd;
-   FormatType  type;
-   uint32       size;
-///.
-   public:
-
-               cmd_Format(DriveIO*);
-   virtual    ~cmd_Format();
-   int32         onInit(void);
-   void        setType(FormatType t, uint32 b, int32 param);
-   void        setImmediate(int32);
 };
 
 class cmd_StartStopUnit : public SCSICommand
@@ -2062,18 +1385,18 @@ class cmd_StartStopUnit : public SCSICommand
       StartStop_Sleep   = 0x50
    };
 
-          cmd_StartStopUnit(DriveIO*);
+          cmd_StartStopUnit(DriveIO &, DriveStatus&);
    virtual    ~cmd_StartStopUnit();
-   int32         onInit(void);
+   bool onInit();
    void        setType(StartStopType t);
 };
 
 class cmd_LockDrive : public SCSICommand
 {
    public:
-               cmd_LockDrive(DriveIO*);
+               cmd_LockDrive(DriveIO &, DriveStatus&);
    virtual    ~cmd_LockDrive();
-   int32         onInit(void);
+   bool onInit();
    void        setLocked(bool locked);
 };
 
@@ -2095,9 +1418,9 @@ class cmd_ReadHeader : public SCSICommand
 
    public:
 
-         cmd_ReadHeader(DriveIO*);
+         cmd_ReadHeader(DriveIO &, DriveStatus&);
    virtual             ~cmd_ReadHeader(void);
-   int32                  onInit(void);
+   bool onInit();
    EDataType            GetTrackType(uint32 lba);
 
 };
@@ -2115,10 +1438,10 @@ class cmd_Read : public SCSICommand
 
    public:
 
-         cmd_Read(DriveIO*);
+         cmd_Read(DriveIO &, DriveStatus&);
    virtual             ~cmd_Read(void);
-   int32                  onInit(void);
-   int32                  ReadData(uint32, uint32, APTR);
+   bool onInit();
+   bool ReadData(uint32, uint32, APTR);
 };
 
 class cmd_ReadCD : public SCSICommand
@@ -2154,10 +1477,10 @@ private:
 
 public:
 
-                        cmd_ReadCD(DriveIO*);
+                        cmd_ReadCD(DriveIO &, DriveStatus&);
    virtual             ~cmd_ReadCD(void);
-   int32                  onInit(void);
-   int32                  readCD(int32 start, uint16 count, uint16 secsize, void* mem, uint32 flags);
+   bool onInit();
+   bool readCD(int32 start, uint16 count, uint16 secsize, void* mem, uint32 flags);
 };
 
 class cmd_Write : public SCSICommand
@@ -2174,10 +1497,10 @@ class cmd_Write : public SCSICommand
 
    public:
 
-         cmd_Write(DriveIO*);
+         cmd_Write(DriveIO &, DriveStatus&);
    virtual             ~cmd_Write(void);
-   int32                  onInit(void);
-   int32                  WriteData(uint32, uint32, uint32, APTR);
+   bool onInit();
+   bool WriteData(uint32, uint32, uint32, APTR);
 };
 
 class cmd_Close : public SCSICommand
@@ -2214,13 +1537,20 @@ class cmd_Close : public SCSICommand
       Close_CDMRW_StopFormat              = 2,
       Close_CDMRW_Finalize                = 6,
 
+      /*
+      ** the following are only for discs recorded in sequential recording
+      */
+      Close_BDR_Track			  = 1,
+      Close_BDR_Session			  = 2,
+      Close_BDR_Finalize		  = 6,
+
       Close_FlushBuffers                  = -1
    };
 
 
-        cmd_Close(DriveIO*);
+        cmd_Close(DriveIO &, DriveStatus&);
    virtual       ~cmd_Close() { };
-   int32            onInit(void);
+   bool onInit();
    void           setType(cmd_Close::CloseType t, uint32 num);
    void           setImmediate(int32 f);
 };
@@ -2237,82 +1567,12 @@ class cmd_Reserve : public SCSICommand
 
    public:
 
-         cmd_Reserve(DriveIO*);
+         cmd_Reserve(DriveIO &, DriveStatus&);
    virtual             ~cmd_Reserve(void);
-   int32                  onInit(void);
-   int32                  Reserve(uint32);
+   bool onInit();
+   bool                   Reserve(uint32);
 };
 
-class cmd_SendDVDStructure : public SCSICommand
-{
-   public:
-
-
-   private:
-
-   int32      type;
-   uint16   *data;
-
-
-   public:
-
-   enum StructureType
-   {
-      DVD_DateTime = 1,
-      DVD_Calibration = DVD_DateTime,
-   };
-
-
-   cmd_SendDVDStructure(DriveIO*);
-   virtual             ~cmd_SendDVDStructure(void);
-   virtual int32          onInit(void);
-   virtual int32          onExit(void);
-   virtual int32          SendStructure(StructureType);
-};
-
-class cmd_ReadDVDStructure : public SCSICommand
-{
-public:
-   enum StructureType
-   {
-      DVD_Physical   =  0,          // TODO: unimplemented, layer=layer#
-      DVD_Copyright,                // TODO: unimplemented, layer=layer#
-      DVD_DiscKey,                  // TODO: unimplemented,
-      DVD_BurstCutArea,             // TODO: unimplemented,
-      DVD_Manufacturer,             // layer=layer#
-      DVD_CopyrightMgmt,            // TODO: unimplemented, address=lba
-      DVD_MediaIdentifier,          // TODO: unimplemented,
-      DVD_MediaKeyBlock,            // TODO: unimplemented, address=pack#
-      DVD_DiscDefinitionStructure,  // TODO: unimplemented, [DVD-RAM]
-      DVD_MediumStatus,             // TODO: unimplemented, [DVD-RAM]
-      DVD_SpareAreaInformation,     // TODO: unimplemented,
-
-      DVD_RecordMgmtDataLast = 0x0c,// TODO: unimplemented, address=start field#
-      DVD_RecordMgmtData,           // TODO: unimplemented, address=start sector#
-      DVD_PreRecordedLeadIn,        // TODO: unimplemented,
-      DVD_UniqueDiscID,             // TODO: unimplemented,
-      DVD_PhysicalFormatInfo,       // TODO: unimplemented, layer=layer#
-
-      DVD_DiscControlBlocks = 0x30, // TODO: unimplemented, address=content descriptor
-
-      DVD_WriteProtection = 0xC0,   // TODO: unimplemented,
-   };
-
-private:
-   StructureType  type;
-   DVD_Structure *data;
-   uint32         addr;
-   uint8          layer;
-
-public:
-
-                           cmd_ReadDVDStructure(DriveIO*);
-   virtual                ~cmd_ReadDVDStructure();
-   virtual int32             onInit();
-   virtual int32             onProbe(int32 c, int32 s);
-   virtual int32             onExit();
-   virtual DVD_Structure  *ReadStructure(StructureType, uint32 lba, uint8 layer);
-};
 
 class cmd_SetSpeed : public SCSICommand
 {
@@ -2324,10 +1584,10 @@ class cmd_SetSpeed : public SCSICommand
    uint16       write;
 
    public:
-         cmd_SetSpeed(DriveIO*);
+         cmd_SetSpeed(DriveIO &, DriveStatus&);
    virtual             ~cmd_SetSpeed(void);
-   int32                  onInit(void);
-   int32                  SetSpeed(uint16, uint16);
+   bool onInit();
+   bool SetSpeed(uint16, uint16);
 };
 
 class cmd_SendCueSheet : public SCSICommand
@@ -2335,9 +1595,9 @@ class cmd_SendCueSheet : public SCSICommand
    unsigned char     *pCue;
    unsigned short     lElements;
 public:
-                        cmd_SendCueSheet(DriveIO*);
+                        cmd_SendCueSheet(DriveIO &, DriveStatus&);
    virtual             ~cmd_SendCueSheet(void);
-   int32                  onInit(void);
+   bool onInit();
    void                 SendCueSheet(unsigned char *pCue, int32 lElements);
 };
 
@@ -2345,13 +1605,10 @@ class cmd_Calibrate : public SCSICommand
 {
 public:
 
-                        cmd_Calibrate(DriveIO*);
-   int32                  onInit();
+                        cmd_Calibrate(DriveIO &, DriveStatus&);
+   bool onInit();
 };
 
 
-#ifndef __mc68000
-#pragma pack()
-#endif
 #endif
 

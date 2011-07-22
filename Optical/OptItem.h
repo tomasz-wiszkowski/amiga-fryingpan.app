@@ -1,22 +1,3 @@
-/*
- * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation; either version 2.1
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 #ifndef _OPTITEM_H_
 #define _OPTITEM_H_
 
@@ -36,8 +17,8 @@ using namespace GenNS;
 
 class OptItem : public IOptItem
 {
-   Synchronizer      di_sync;
-   uint32            di_opencnt;
+   mutable Synchronizer	    di_sync;
+   mutable uint32	    di_opencnt;
 
    VectorT<IOptItem*>di_children;
    IOptItem         *di_parent;
@@ -50,7 +31,7 @@ class OptItem : public IOptItem
    int32             di_start;         // first block
    uint16            di_pregap;        // automatically generated pregap
    uint16            di_postgap;       // automatically generated postgap
-   int32            di_datasize;       // real data size (end = start + pregap + data + postgap - 1)
+   int32             di_datasize;      // real data size (end = start + pregap + data + postgap - 1)
 
    uint32            di_actual;        // how many sectors have actually been written so far? (equals to "size" in most cases)
    uint16            di_sectorsize;    // size of sector
@@ -74,6 +55,8 @@ class OptItem : public IOptItem
    uint32            di_discid;        // disc, from which the track originates
 
 
+
+
 protected:
    virtual                ~OptItem();
    virtual IOptItem       *addChild(IOptItem* child);
@@ -94,8 +77,9 @@ public:
     * inherited methods go here
     */
 
-   virtual void            claim() const;
-   virtual void            dispose() const;
+   virtual const IOptItem *acquire() const;
+   virtual void            release() const;
+   virtual bool		   remChild(IOptItem* child);
 
    virtual EItemType       getItemType() const;
    virtual void            setItemType(EItemType lNewType);

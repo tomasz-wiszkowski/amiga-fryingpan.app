@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,19 +10,20 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#include "JobUploadSession.h"
-#include <Optical/IOptItem.h>
-#include <Optical/Optical.h>
 
-JobUploadSession::JobUploadSession(unsigned long drive, const IOptItem *src, IFileReader *rdr) :
-   Job(drive)
+#include "JobUploadSession.h"
+#include <libdata/Optical/IOptItem.h>
+#include <libclass/Optical.h>
+
+JobUploadSession::JobUploadSession(Globals &glb, iptr drive, const IOptItem *src, IData *rdr) :
+   Job(glb,drive)
 {
    disc     = src;
    reader   = rdr;
@@ -38,14 +39,14 @@ JobUploadSession::~JobUploadSession()
 
 void JobUploadSession::execute()
 {
-   unsigned long res = 0;
+   iptr res = 0;
    
    /*
     * in general, we do not want to play layouts. it won't be here..
     * reason: if someone wants to record a disc image, this image already carries the layout details.
     */
 
-   res = pOptical->OptDoMethodA(ARRAY(DRV_UploadLayout, Drive, (int)disc));
+   res = g.Optical->DoMethodA(ARRAY(DRV_UploadLayout, Drive, (int)disc));
 
    numBlocks = 0;
    currBlock = 0;
@@ -61,9 +62,9 @@ void JobUploadSession::execute()
       numBlocks = disc->getDataBlockCount();
       currBlock = 0;
 
-      pOptical->OptDoMethodA(ARRAY(DRV_LockDrive, Drive, DRT_LockDrive_Write));
+      g.Optical->DoMethodA(ARRAY(DRV_LockDrive, Drive, DRT_LockDrive_Write));
 
-      reader->setUp();
+      reader->setUp(disc->getChild(0));
 
       for (int i=0; i<disc->getChild(0)->getChildCount(); i++)
       {
@@ -72,8 +73,8 @@ void JobUploadSession::execute()
          while (size > 0)
          {
             uint32 trns = 16 <? size;
-            reader->readData(disc, memblk, trns);
-            res = (EOpticalError)pOptical->OptDoMethodA(ARRAY(DRV_WriteSequential, Drive, (int)memblk, trns));
+            reader->readData(memblk, trns);
+            res = (EOpticalError)g.Optical->DoMethodA(ARRAY(DRV_WriteSequential, Drive, (int)memblk, trns));
             currBlock += trns;
             size -= trns;
             
@@ -91,11 +92,11 @@ void JobUploadSession::execute()
       reader->cleanUp();
 
       if (disc->getFlags() & DIF_Disc_CloseDisc)
-         pOptical->OptDoMethodA(ARRAY(DRV_CloseDisc, Drive, DRT_Close_Finalize));
+         g.Optical->DoMethodA(ARRAY(DRV_CloseDisc, Drive, DRT_Close_Finalize));
       else
-         pOptical->OptDoMethodA(ARRAY(DRV_CloseDisc, Drive, DRT_Close_Session));
+         g.Optical->DoMethodA(ARRAY(DRV_CloseDisc, Drive, DRT_Close_Session));
 
-      pOptical->OptDoMethodA(ARRAY(DRV_LockDrive, Drive, DRT_LockDrive_Unlock));
+      g.Optical->DoMethodA(ARRAY(DRV_LockDrive, Drive, DRT_LockDrive_Unlock));
 
       if (res != 0)
       {
@@ -119,7 +120,7 @@ uint32 JobUploadSession::onData(void* mem, int sectors)
    }
 
    currBlock += sectors;
-   ret = (EOpticalError)pOptical->OptDoMethodA(ARRAY(DRV_WriteSequential, Drive, (int)mem, sectors));
+   ret = (EOpticalError)g.Optical->DoMethodA(ARRAY(DRV_WriteSequential, Drive, (int)mem, sectors));
 
    switch (ret)
    {
@@ -273,9 +274,9 @@ uint32 JobUploadSession::onData(void* mem, int sectors)
 }
 
 
-unsigned long JobUploadSession::getProgress()
+uint32 JobUploadSession::getProgress()
 {
-   unsigned long long s1=0, s2=0;
+   uint64 s1=0, s2=0;
 
    s2 = numBlocks;
    s1 = currBlock;
@@ -289,7 +290,7 @@ unsigned long JobUploadSession::getProgress()
       s1 >>= 1;
    }
 
-   return ((long)s1 * 65535) / (long)s2;
+   return ((uint32)s1 * 65535) / (uint32)s2;
 }
 
 const char *JobUploadSession::getActionName()

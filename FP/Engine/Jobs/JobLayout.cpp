@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,40 +10,42 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+
 #include "JobLayout.h"
-#include <Optical/IOptItem.h>
+#include <libdata/Optical/IOptItem.h>
 #include <utility/tagitem.h>
 
-JobLayout::JobLayout(unsigned long drive, VectorT<ITrack*> &trks, bool master, bool closedisc, String &res, uint32 &size) :
-   Job(drive),
-   numblocks(size),
-   operation(res)
+JobLayout::JobLayout(Globals &glb, iptr drive, RWSyncT< VectorT<IData*> > &trks, bool master, bool closedisc, String &res, uint32 &size) :
+    Job(glb, drive),
+    tracks(trks),
+    numblocks(size),
+    operation(res)
 {
-   disc      = pOptical->OptCreateDisc();
-   session   = disc->addChild();
-   operation = "Analysing layout";
+    VectorT<IData*> &v = tracks.ObtainRead();
 
-   for (int i=0; i<trks.Count(); i++)
+    disc      = g.Optical->CreateDisc();
+    session   = disc->addChild();
+    operation = "Analysing layout";
+
+   for (uint32 i=0; i<v.Count(); i++)
    {
-      if (trks[i]->isValid())
-      {
-         ITrack   *t = trks[i]->getClone();
-         IOptItem *o = session->addChild();
-   
-         t->update();
-         t->fillOptItem(o);
-
-         tracks << t;
-         items  << o;
-      }
+       IOptItem *o = session->addChild();
+       if (!v[i]->fillOptItem(o))
+       {
+	   session->remChild(o);
+	   continue;
+       }
+       items  << o;
    }
+
+   tracks.Release();
 
    disc->setFlags((closedisc ? DIF_Disc_CloseDisc   : DIF_Disc_CloseSession) |
                   (master    ? DIF_Disc_MasterizeCD : 0));
@@ -52,12 +54,6 @@ JobLayout::JobLayout(unsigned long drive, VectorT<ITrack*> &trks, bool master, b
 
 JobLayout::~JobLayout()
 {
-   while (tracks.Count() > 0)
-   {
-      tracks[0]->dispose();
-      tracks >> tracks[0];
-   }
-
    disc->dispose();
 }
 
@@ -65,14 +61,14 @@ void JobLayout::execute()
  {
    EOpticalError  res = ODE_OK;
 
-   if (tracks.Count() == 0)
+   if (items.Count() == 0)
    {
       operation = "Nothing to be written.";
       numblocks = 0;
       return;
    }
 
-   res = (EOpticalError)pOptical->OptDoMethodA(ARRAY(DRV_LayoutTracks, Drive, (int)disc));
+   res = (EOpticalError)g.Optical->DoMethodA(ARRAY(DRV_LayoutTracks, Drive, (int)disc));
 
    analyse(res);
 }
@@ -88,7 +84,7 @@ void JobLayout::analyse(EOpticalError ret)
       uint32 ssize, scurr;
       String suff = "kB";
 
-      pOptical->OptDoMethodA(ARRAY(DRV_GetAttrs, Drive, DRA_Disc_Size, (int)&size, TAG_DONE, 0));
+      g.Optical->DoMethodA(ARRAY(DRV_GetAttrs, Drive, DRA_Disc_Size, (int)&size, TAG_DONE, 0));
       numblocks = size;
 
       if (size == 0)
@@ -289,7 +285,7 @@ void JobLayout::analyse(EOpticalError ret)
 }
 
 
-unsigned long JobLayout::getProgress()
+uint32 JobLayout::getProgress()
 {
    return 65535;
 }

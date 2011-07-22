@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,18 +10,19 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#include "JobMediumAction.h"
-#include <Optical/IOptItem.h>
 
-JobMediumAction::JobMediumAction(unsigned long drive, JobMediumAction::Action action) :
-   Job(drive)
+#include "JobMediumAction.h"
+#include <libdata/Optical/IOptItem.h>
+
+JobMediumAction::JobMediumAction(Globals &glb, iptr drive, JobMediumAction::Action action) :
+   Job(glb, drive)
 {
    eAction = action;
 }
@@ -32,43 +33,43 @@ void JobMediumAction::execute()
    {
       case Act_QuickErase:
          {
-            pOptical->OptDoMethodA(ARRAY(DRV_Blank, Drive, DRT_Blank_Fast));
+            g.Optical->DoMethodA(ARRAY(DRV_Blank, Drive, DRT_Blank_Fast));
          }
          break;
 
       case Act_QuickFormat:
          {
-            pOptical->OptDoMethodA(ARRAY(DRV_Format, Drive, DRT_Format_Fast));
+            g.Optical->DoMethodA(ARRAY(DRV_Format, Drive, DRT_Format_Fast));
          }
          break;
 
       case Act_CompleteErase:
          {
-            pOptical->OptDoMethodA(ARRAY(DRV_Blank, Drive, DRT_Blank_Complete));
+            g.Optical->DoMethodA(ARRAY(DRV_Blank, Drive, DRT_Blank_Complete));
          }
          break;
 
       case Act_CompleteFormat:
          {
-            pOptical->OptDoMethodA(ARRAY(DRV_Format, Drive, DRT_Format_Complete));
+            g.Optical->DoMethodA(ARRAY(DRV_Format, Drive, DRT_Format_Complete));
          }
          break;
 
       case Act_Prepare:
          {
-            pOptical->OptDoMethodA(ARRAY(DRV_StructureDisc, Drive));
+            g.Optical->DoMethodA(ARRAY(DRV_StructureDisc, Drive));
          }
          break;
 
       case Act_CloseSession:
          {
-            pOptical->OptDoMethodA(ARRAY(DRV_CloseDisc, Drive, DRT_Close_Session));
+            g.Optical->DoMethodA(ARRAY(DRV_CloseDisc, Drive, DRT_Close_Session));
          }
          break;
 
       case Act_CloseDisc:
          {
-            pOptical->OptDoMethodA(ARRAY(DRV_CloseDisc, Drive, DRT_Close_Finalize));
+            g.Optical->DoMethodA(ARRAY(DRV_CloseDisc, Drive, DRT_Close_Finalize));
          }
          break;
 
@@ -80,13 +81,13 @@ void JobMediumAction::execute()
 
       case Act_RepairDisc:
          {
-            pOptical->OptDoMethodA(ARRAY(DRV_RepairDisc, Drive, 0));
+            g.Optical->DoMethodA(ARRAY(DRV_RepairDisc, Drive, 0));
          }
          break;
    }
 }
 
-unsigned long JobMediumAction::getProgress()
+uint32 JobMediumAction::getProgress()
 {
    return 0;
 }
@@ -134,7 +135,7 @@ void JobMediumAction::closeTracks()
 {
    const IOptItem *dsc, *ses, *trk;
 
-   pOptical->OptDoMethodA(ARRAY(DRV_GetAttrs, Drive, DRA_Disc_Contents, (uint)&dsc, 0));
+   g.Optical->DoMethodA(ARRAY(DRV_GetAttrs, Drive, DRA_Disc_Contents, (iptr)&dsc, 0));
 
    if (dsc)
    {
@@ -147,7 +148,7 @@ void JobMediumAction::closeTracks()
             trk = ses->getChild(j);
             if (!trk->isComplete())
             {
-               pOptical->OptDoMethodA(ARRAY(DRV_CloseDisc, Drive, DRT_Close_Track, trk->getItemNumber()));
+               g.Optical->DoMethodA(ARRAY(DRV_CloseDisc, Drive, DRT_Close_Track, trk->getItemNumber()));
             }
          }
       }

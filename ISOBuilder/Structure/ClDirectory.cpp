@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,12 +10,13 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 
 #include <Generic/LibrarySpool.h>
 #include "ClDirectory.h"
@@ -80,8 +81,8 @@ ClDirectory::~ClDirectory()
    
 bool ClDirectory::vecDeleteChild(ClElement* const &e)
 {
-   delete e;
-   return true;
+    delete e;
+    return true;
 }
    
 int ClDirectory::vecCompareChildren(ClElement* const& a, ClElement*  const& b)
@@ -230,7 +231,7 @@ bool ClDirectory::scanDirectory(const String &sDirectory)
 
    sort();
 
-   for (long i=0; i<v.Count(); i++)
+   for (uint32 i=0; i<v.Count(); i++)
    {
       v[i]->update();
    }
@@ -304,6 +305,14 @@ ClElement* ClDirectory::addChild(const String &sElem)
    return pElem;
 }
 
+ClDirectory* ClDirectory::makeDir(const char* name)
+{
+    ClDirectory* dir = new ClDirectory(getRoot(), this, name);
+    addChild(dir);
+
+    return dir;
+}
+
 bool ClDirectory::update()
 {
    ClElement::update();
@@ -317,7 +326,7 @@ bool ClDirectory::update()
    return true;
 }
 
-int ClDirectory::getChildrenCount() const
+uint32 ClDirectory::getChildrenCount() const
 {
    return hChildren.Count();
 }
@@ -337,7 +346,7 @@ void ClDirectory::setParentElementPathID(unsigned long lID)
    lParentPathID = lID;
 }
 
-unsigned long ClDirectory::getJolietPathTableEntrySize() const
+uint32 ClDirectory::getJolietPathTableEntrySize() const
 {
    if (!isJolietEntry())
       return 0;
@@ -345,7 +354,7 @@ unsigned long ClDirectory::getJolietPathTableEntrySize() const
    return lJolietPathTableEntrySize;
 }
 
-unsigned long ClDirectory::getISOPathTableEntrySize() const
+uint32 ClDirectory::getISOPathTableEntrySize() const
 {
    if (!isISOEntry())
       return 0;
@@ -370,88 +379,86 @@ void ClDirectory::rebuild()
 
 bool ClDirectory::recalculate()
 {
-   unsigned long  lISO, 
-                  lJoliet,
-                  lSize,
-                  lRR;
+    uint32 lJoliet, lSize;
 
-   // fix all names
-   sort();
+    // fix all names
+    sort();
 
-   {
-      VectorT<const ClName*> names;
-      for (int i=0; i<getChildrenCount(); i++)
-      {
-         names.InsertSorted(getChild(i)->getISONameStruct(), &vecCompareISONames);
-         const_cast<ClName*>(getChild(i)->getISONameStruct())->setVersion(1);
-      }
+    {
+	VectorT<const ClName*> names;
+	for (uint32 i=0; i<getChildrenCount(); i++)
+	{
+	    names.InsertSorted(getChild(i)->getISONameStruct(), &vecCompareISONames);
+	    const_cast<ClName*>(getChild(i)->getISONameStruct())->setVersion(1);
+	}
 
-      for (int i=1; i<names.Count(); i++)
-      {
-         if (0 == names[i-1]->compareBase(names[i]))
-         {
-            _d(Lvl_Debug, "Found two same entries. Setting new version to %ld", names[i-1]->getVersion()+1);
-            const_cast<ClName*>(names[i])->setVersion(names[i-1]->getVersion() + 1);
-            const_cast<ClName*>(names[i])->update();
-         }
-      }
+	for (uint32 i=1; i<names.Count(); i++)
+	{
+	    if (0 == names[i-1]->compareBase(names[i]))
+	    {
+		_d(Lvl_Debug, "Found two same entries. Setting new version to %ld", names[i-1]->getVersion()+1);
+		const_cast<ClName*>(names[i])->setVersion(names[i-1]->getVersion() + 1);
+		const_cast<ClName*>(names[i])->update();
+	    }
+	}
 
-      names.Empty();
-   }
+	names.Empty();
+    }
 
-   setISOPathTableEntrySize(ISOPathRecord::getISOLength(getISOName()));             // cool!!! ;)
-   setJolietPathTableEntrySize(ISOPathRecord::getJolietLength(getJolietName()));    // and this, too! ;) 
-   
-   lISO     = 34 + rr_sp.Length() + rr_px.Length();    //sizeof(ISODirRecord);       // dot
-   lISO    += 34 + getParent()->rr_px.Length();        //sizeof(ISODirRecord);       // dotdot
-   lJoliet  = 34;    //sizeof(ISOWDirRecord);      // dot
-   lJoliet += 34;    //sizeof(ISOWDirRecord);      // dotdot
-   lRR      = 0;
+    setISOPathTableEntrySize(ISOPathRecord::getISOLength(getISOName()));             // cool!!! ;)
+    setJolietPathTableEntrySize(ISOPathRecord::getJolietLength(getJolietName()));    // and this, too! ;) 
 
-   for (int i=0; i<getChildrenCount(); i++)
-   {
-      lSize     = getChild(i)->getISODirTableEntrySize();
-      if ((2048 - (lISO & 2047)) < lSize)
-      {
-         lISO += 2047;
-         lISO &= ~2047;
-      }
-      lISO     += lSize;
+    lISO     = 34 + rr_sp.Length() + rr_px.Length();    //sizeof(ISODirRecord);       // dot
+    lISO    += 34 + getParent()->rr_px.Length();        //sizeof(ISODirRecord);       // dotdot
+    lJoliet  = 34;    //sizeof(ISOWDirRecord);      // dot
+    lJoliet += 34;    //sizeof(ISOWDirRecord);      // dotdot
+    lRRCE    = 0;
 
-      lSize     = getChild(i)->getJolietDirTableEntrySize();
-      if ((2048 - (lJoliet & 2047)) < lSize)
-      {
-         lJoliet += 2047;
-         lJoliet &= ~2047;
-      }
-      lJoliet  += lSize;
+    for (uint32 i=0; i<getChildrenCount(); i++)
+    {
+	lSize     = getChild(i)->getISODirTableEntrySize();
+	if ((2048 - (lISO & 2047)) < lSize)
+	{
+	    lISO += 2047;
+	    lISO &= ~2047;
+	}
+	lISO     += lSize;
 
-      lSize     = getChild(i)->getRRContinuationSize();
-      if ((2048 - (lRR & 2047)) < lSize)
-      {
-         lRR += 2047;
-         lRR &= ~2047;
-      }
-      lRR      += lSize;
-   }
-   
-   /*
-    * mix ISO and RR together as they *go* together
-    */
-   lISO    += 2047;
-   lISO    &= ~2047;
-   lJoliet += 2047;
-   lJoliet &= ~2047;
-   lRR     += 2047;
-   lRR     &= ~2047;
-   
-   setISOSize(lISO + lRR);
-   setJolietSize(lJoliet);
+	lSize     = getChild(i)->getJolietDirTableEntrySize();
+	if ((2048 - (lJoliet & 2047)) < lSize)
+	{
+	    lJoliet += 2047;
+	    lJoliet &= ~2047;
+	}
+	lJoliet  += lSize;
 
-   return true;
+	lSize     = getChild(i)->getRRContinuationSize();
+	if ((2048 - (lRRCE & 2047)) < lSize)
+	{
+	    lRRCE += 2047;
+	    lRRCE &= ~2047;
+	}
+	lRRCE    += lSize;
+    }
+
+    /*
+     * mix ISO and RR together as they *go* together
+     */
+    lISO    += 2047;
+    lISO    &= ~2047;
+    lJoliet += 2047;
+    lJoliet &= ~2047;
+    lRRCE   += 2047;
+    lRRCE   &= ~2047;
+    lRRIdx = 0;
+
+    setISOSize(lISO + lRRCE);
+    setJolietSize(lJoliet);
+    
+    return true;
 }
 
-unsigned long ClDirectory::buildISOPathTableEntry(ISOPathRecord *pRec, bool bIsMSB)
+uint32 ClDirectory::buildISOPathTableEntry(ISOPathRecord *pRec, bool bIsMSB)
 {
    if (!isISOEntry())
       return 0;
@@ -464,7 +471,7 @@ unsigned long ClDirectory::buildISOPathTableEntry(ISOPathRecord *pRec, bool bIsM
    return lLen;
 }
 
-unsigned long ClDirectory::buildJolietPathTableEntry(ISOPathRecord *pRec, bool bIsMSB)
+uint32 ClDirectory::buildJolietPathTableEntry(ISOPathRecord *pRec, bool bIsMSB)
 {
    if (!isJolietEntry())
       return 0;
@@ -477,113 +484,168 @@ unsigned long ClDirectory::buildJolietPathTableEntry(ISOPathRecord *pRec, bool b
    return lLen;
 }
    
-unsigned long ClDirectory::buildISODirTable(ISODirRecord *pRec)
+uint32 ClDirectory::buildISODirTable(uint8 *buf, uint32 pos)
 {
-   long lPos = 0;
-   long lEnd = getISOSize();
-   uint8 *buf;
+    uint32 lSize = 0;
+    uint32 lOfs = 0;
 
-   if (!isISOEntry())
-      return 0;
-      
-   ISODotDirRecord     *dot    = ((ISODotDirRecord*)&((char*)pRec)[lPos]);
-   dot->initialize();
-   dot->setSize(getISOSize());
-   dot->setDate(&getDate());
-   dot->setPosition(getISOPosition());
-   if (isRockRidgeEntry())
-   {
-      buf = dot->getExtension();
-      buf = rr_sp.PutData(buf);
-      buf = rr_px.PutData(buf);
-      dot->setExtensionSize(rr_sp.Length() + rr_px.Length());
-   }
-   lPos += dot->getSize();
+    if (!isISOEntry())
+	return 0;
 
-   ISODotDotDirRecord  *dotdot = ((ISODotDotDirRecord*)&((char*)pRec)[lPos]);
-   dotdot->initialize();
-   dotdot->setDate(&getParent()->getDate());
-   dotdot->setSize(getParent()->getISOSize());
-   dotdot->setPosition(getParent()->getISOPosition());
-   if (isRockRidgeEntry())
-   {
-      buf = dotdot->getExtension();
-      getParent()->rr_px.PutData(buf);
-      dotdot->setExtensionSize(getParent()->rr_px.Length());
-   }
-   lPos += dotdot->getSize();
-   
+    if (pos == 0)
+    {
+	ASSERT(lRRIdx == 0);
+	_d(Lvl_Info, "ISO %s", (iptr)getNormalName());
 
-   for (int i=0; i<getChildrenCount(); i++)
-   {
-      int lSize = 0;
+	ISODotDirRecord     *dot    = ((ISODotDirRecord*)buf);
+	dot->initialize();
+	dot->setSize(getISOSize());
+	dot->setDate(&getDate());
+	dot->setPosition(getISOPosition());
+	if (isRockRidgeEntry())
+	{
+	    uint8* buf = dot->getExtension();
+	    buf = rr_sp.PutData(buf);
+	    buf = rr_px.PutData(buf);
+	    dot->setExtensionSize(rr_sp.Length() + rr_px.Length());
+	}
+	lOfs += dot->getSize();
 
-      _d(Lvl_Info, "Adding child %s [fill: %ld out of %ld]...", (uint32)getChild(i)->getNormalName(), lPos, getISOSize());
+	ISODotDotDirRecord  *dotdot = ((ISODotDotDirRecord*)(&buf[lOfs]));
+	dotdot->initialize();
+	dotdot->setDate(&getParent()->getDate());
+	dotdot->setSize(getParent()->getISOSize());
+	dotdot->setPosition(getParent()->getISOPosition());
+	if (isRockRidgeEntry())
+	{
+	    uint8* buf = dotdot->getExtension();
+	    getParent()->rr_px.PutData(buf);
+	    dotdot->setExtensionSize(getParent()->rr_px.Length());
+	}
+	lOfs += dotdot->getSize();
+	lISOIdx = 0;
+	lRRIdx = 0;
+	pos = 1;
+    }
 
-      /*
-       * fun stuff: calculate rockridge extensions and place them.
-       */
-      lSize = getChild(i)->getRRContinuationSize();
-      if (lSize > 0)
-      {
-         if ((lEnd & 2047) < lSize)
-            lEnd &= ~2047;
-         lEnd -= lSize;
+    // no else-if here! we need to fallthrough
+    if (pos == 1)
+    {
+	uint32 lRROfs = (getISOPosition()<<11) + lISO;
 
-         getChild(i)->buildRRContinuation(&((uint8*)pRec)[lEnd]);
-         getChild(i)->setRRContinuationLocation(getISOPosition() + (lEnd >> 11), lEnd & 2047);
-      }
+	for (; lISOIdx < getChildrenCount(); lISOIdx++)
+	{
+	    register ClElement* e = getChild(lISOIdx);
 
-      /*
-       * and now the actual entry
-       */
-      lSize = getChild(i)->getISODirTableEntrySize();
-      if ((2048-(lPos&2047)) < lSize)
-      {
-         lPos = (lPos + 2047) & ~2047;
-      }
-      getChild(i)->buildISODirTableEntry((ISODirRecord*)&((char*)pRec)[lPos]);
-      lPos += lSize;
+	    /*
+	     * 1: calculate rockridge extensions and place them.
+	     */
+	    lSize = e->getRRContinuationSize();
+	    if (lSize > 0)
+	    {
+		if ((2048 - (lRROfs & 2047)) < lSize)
+		    lRROfs = (lRROfs + 2047) & ~2047;
+		e->setRRContinuationLocation((lRROfs >> 11), lRROfs & 2047);
+		lRROfs += lSize;
+	    }
 
-   }
-   return lPos;
+	    /*
+	     * 2: generate iso data
+	     */
+	    lSize = e->getISODirTableEntrySize();
+	    if ((2048 - lOfs) < lSize)
+		break;
+
+	    e->buildISODirTableEntry((ISODirRecord*)(&buf[lOfs]));
+	    lOfs += lSize;
+	}
+
+	ASSERT(lOfs <= 2048);
+	memset(&buf[lOfs], 0, 2048-lOfs);
+	lOfs = 2048;
+
+	if (lISOIdx == getChildrenCount())
+	    pos = 2;
+    }
+    
+    // we want fallthrough
+    if (pos == 2)
+    {
+	for (; lRRIdx < getChildrenCount(); lRRIdx++)
+	{
+	    register ClElement * e = getChild(lRRIdx);
+
+	    lSize = e->getRRContinuationSize();
+	    if ((2048 - lOfs) < lSize)
+	    {
+		_d(Lvl_Info, "Element %s claims CE requirement that won't fit in current area", (iptr)e->getNormalName());
+		break;
+	    }
+
+	    e->buildRRContinuation(&buf[lOfs]);
+	    lOfs += lSize;
+	}
+
+	ASSERT(lOfs <= 2048);
+	memset(&buf[lOfs], 0, 2048 - lOfs);
+	if (lRRIdx == getChildrenCount())
+	    pos = 0;
+    }
+    return pos;
 }
 
-unsigned long ClDirectory::buildJolietDirTable(ISOWDirRecord *pRec)
+uint32 ClDirectory::buildJolietDirTable(uint8 *buf, uint32 pos)
 {
-   long lPos = 0;
-   
-   if (!isJolietEntry())
-      return 0;
- 
-   ISODotDirRecord     *dot    = ((ISODotDirRecord*)&((char*)pRec)[lPos]);
-   lPos += 34;
-   ISODotDotDirRecord  *dotdot = ((ISODotDotDirRecord*)&((char*)pRec)[lPos]);
-   lPos += 34;
-   
-   dot->initialize();
-   dot->setDate(&getDate());
-   dot->setSize(getJolietSize());
-   dot->setPosition(getJolietPosition());
-   dotdot->initialize();
-   dotdot->setDate(&getParent()->getDate());
-   dotdot->setSize(getParent()->getJolietSize());
-   dotdot->setPosition(getParent()->getJolietPosition());
+    int lSize = 0;
+    int lOfs = 0;
 
-   for (int i=0; i<getChildrenCount(); i++)
-   {
-      int lSize = 0;
-      lSize = getChild(i)->getJolietDirTableEntrySize();
-      if ((2048-(lPos&2047)) < lSize)
-      {
-         lPos = (lPos + 2047) & ~2047;
-      }
-      lSize = getChild(i)->buildJolietDirTableEntry((ISOWDirRecord*)&((char*)pRec)[lPos]);
-      lPos += lSize;
-   }
-   return lPos;
+    if (!isJolietEntry())
+	return 0;
+
+    if (pos == 0)
+    {
+	_d(Lvl_Info, "JLT %s", (iptr)getNormalName());
+	ISODotDirRecord     *dot    = ((ISODotDirRecord*)buf);
+	dot->initialize();
+	dot->setSize(getJolietSize());
+	dot->setDate(&getDate());
+	dot->setPosition(getJolietPosition());
+	lOfs += dot->getSize();
+
+	ISODotDotDirRecord  *dotdot = ((ISODotDotDirRecord*)(&buf[lOfs]));
+	dotdot->initialize();
+	dotdot->setDate(&getParent()->getDate());
+	dotdot->setSize(getParent()->getJolietSize());
+	dotdot->setPosition(getParent()->getJolietPosition());
+	lOfs += dotdot->getSize();
+	lISOIdx = 0;
+	pos = 1;
+    }
+
+    // no else-if here! we need to fallthrough
+    if (pos == 1)
+    {
+	for (; lISOIdx < getChildrenCount(); lISOIdx++)
+	{
+	    register ClElement* e = getChild(lISOIdx);
+
+	    lSize = e->getJolietDirTableEntrySize();
+	    if ((2048 - lOfs) < lSize)
+		break;
+
+	    e->buildJolietDirTableEntry((ISOWDirRecord*)(&buf[lOfs]));
+	    lOfs += lSize;
+	}
+
+	ASSERT(lOfs <= 2048);
+	memset(&buf[lOfs], 0, 2048-lOfs);
+
+	if (lISOIdx == getChildrenCount())
+	    pos = 0;
+    }
+    return pos;
 }
-
+   
 /*
  * internal add child: use this to add child without sorting tree.
  */
@@ -605,7 +667,7 @@ void ClDirectory::setISOEntry(bool bIsISO)
    {
       prev = isISOEntry();
 
-      for (int32 i=0; i<hChildren.Count(); i++)
+      for (uint32 i=0; i<hChildren.Count(); i++)
       {
          hChildren[i]->setParentISOEntry(prev);
       }
@@ -625,7 +687,7 @@ void ClDirectory::setJolietEntry(bool bIsJoliet)
    {
       prev = isJolietEntry();
 
-      for (int32 i=0; i<hChildren.Count(); i++)
+      for (uint32 i=0; i<hChildren.Count(); i++)
       {
          hChildren[i]->setParentJolietEntry(prev);
       }
@@ -646,7 +708,7 @@ void ClDirectory::setRockRidgeEntry(bool bIsRR)
    {
       prev = isRockRidgeEntry();
 
-      for (int32 i=0; i<hChildren.Count(); i++)
+      for (uint32 i=0; i<hChildren.Count(); i++)
       {
          hChildren[i]->setParentRockRidgeEntry(prev);
       }
@@ -667,7 +729,7 @@ void ClDirectory::setParentISOEntry(bool bIsISO)
    {
       prev = isISOEntry();
 
-      for (int32 i=0; i<hChildren.Count(); i++)
+      for (uint32 i=0; i<hChildren.Count(); i++)
       {
          hChildren[i]->setParentISOEntry(prev);
       }
@@ -688,7 +750,7 @@ void ClDirectory::setParentJolietEntry(bool bIsJoliet)
    {
       prev = isJolietEntry();
 
-      for (int32 i=0; i<hChildren.Count(); i++)
+      for (uint32 i=0; i<hChildren.Count(); i++)
       {
          hChildren[i]->setParentJolietEntry(prev);
       }
@@ -709,7 +771,7 @@ void ClDirectory::setParentRockRidgeEntry(bool bIsRR)
    {
       prev = isRockRidgeEntry();
 
-      for (int32 i=0; i<hChildren.Count(); i++)
+      for (uint32 i=0; i<hChildren.Count(); i++)
       {
          hChildren[i]->setParentRockRidgeEntry(prev);
       }
@@ -730,7 +792,7 @@ bool ClDirectory::setISOLevel(ClName::Level lvl)
    if (ClElement::setISOLevel(lvl) == false)
       return false;
 
-   for (int32 i=0; i<hChildren.Count(); i++)
+   for (uint32 i=0; i<hChildren.Count(); i++)
    {
       hChildren[i]->setISOLevel(lvl);
    }
@@ -751,10 +813,31 @@ bool ClDirectory::setISORelaxed(bool state)
    if (ClElement::setISORelaxed(state) == false)
       return false;
 
-   for (int32 i=0; i<hChildren.Count(); i++)
+   for (uint32 i=0; i<hChildren.Count(); i++)
    {
       hChildren[i]->setISORelaxed(state);
    }
    return true;
+}
+
+bool ClDirectory::setUp()
+{
+    bool ok = true;
+
+    for (uint32 i=0; i<getChildrenCount(); i++)
+    {
+	ok &= getChild(i)->setUp();
+
+	if (!ok)
+	    break;
+    }
+
+    return ok;
+}
+
+void ClDirectory::cleanUp()
+{
+    for (uint32 i=0; i<getChildrenCount(); i++)
+	getChild(i)->cleanUp();
 }
 

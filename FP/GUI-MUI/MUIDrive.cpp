@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,9 +10,9 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
@@ -49,6 +49,7 @@ enum Loc
    loc_DriveWriteSpeeds,
    loc_DriveStatus,
    loc_DriveCDAudio,
+   loc_DriveWriteProtect,
 
    loc_Supported           =  lg_Drive+ls_Group1,
    loc_Unsupported,
@@ -95,6 +96,7 @@ static class Localization::LocaleSet LocaleSets[] =
    {  loc_DriveWriteSpeeds,      "Write Speeds:",           "LBL_WRITESPEEDS" },
    {  loc_DriveStatus,           "Drive Status:",           "LBL_DRIVESTATUS" },
    {  loc_DriveCDAudio,          "CD-Audio Playback:",      "LBL_CDAUDIO"     },
+   {  loc_DriveWriteProtect,     "Write Protection:",       "LBL_WRITEPROTECT"},
 
    {  loc_Supported,             "Supported",               "LBL_SUPPORTED"   },
    {  loc_Unsupported,           "Unsupported",             "LBL_UNSUPPORTED" },
@@ -134,7 +136,7 @@ MUIDrive::MUIDrive(ConfigParser *parent, Globals &glb) :
    popUnit = 0;
 
    _dx(Lvl_Info, "Updating localization map");
-   Glb.Loc.Add((Localization::LocaleSet*)LocaleSets, LocaleGroup);
+   Glb.Loc.AddGroup((Localization::LocaleSet*)LocaleSets, LocaleGroup);
 
    _dx(Lvl_Info, "Creating config element");
    Config = new ConfigParser(parent, "PageDrive", 0);
@@ -145,13 +147,24 @@ MUIDrive::MUIDrive(ConfigParser *parent, Globals &glb) :
 
 MUIDrive::~MUIDrive()
 {
+   _dx(Lvl_Info, "Disposing PopDevice/PopUnit elements");
+   if (popDevice != 0)
+      delete popDevice;
+   popDevice = 0;
+
+   if (popUnit != 0)
+      delete popUnit;
+   popUnit = 0;
+
+   all = 0;
+   _dx(Lvl_Info, "All done.");
    _dx(Lvl_Info, "Disposing configuration element");
    delete Config;
 }
 
-unsigned long *MUIDrive::getObject()
+iptr *MUIDrive::getObject()
 {
-   _dx(Lvl_Info, "Retrieving page content (%08lx)", (uint)all);
+   _dx(Lvl_Info, "Retrieving page content (%08lx)", (iptr)all);
    if (NULL != all)
       return all;
 
@@ -160,7 +173,7 @@ unsigned long *MUIDrive::getObject()
    if (popDevice == 0)
    {
       _dx(Lvl_Info, "Setting up PopDevice");
-      popDevice = new MUIPopDevice(Glb.Loc[loc_DrivePopDevice], (const char**)ARRAY((uint)Glb.Loc[loc_ColDevDevices].Data(), 0));
+      popDevice = new MUIPopDevice(Glb.Loc[loc_DrivePopDevice], (const char**)ARRAY((iptr)Glb.Loc[loc_ColDevDevices].Data(), 0));
       popDevice->setID(ID_DeviceSelect);
       popDevice->setCallbackHook(hHkButtonHook.GetHook());
    }
@@ -169,9 +182,9 @@ unsigned long *MUIDrive::getObject()
    {
       _dx(Lvl_Info, "Setting up PopUnit");
       popUnit   = new MUIPopUnit(Glb, Glb.Loc[loc_DrivePopUnit], (const char**)ARRAY(
-               (uint)Glb.Loc[loc_ColUnitNumber].Data(),
-               (uint)Glb.Loc[loc_ColUnitVendor].Data(),
-               (uint)Glb.Loc[loc_ColUnitDrive].Data(),
+               (iptr)Glb.Loc[loc_ColUnitNumber].Data(),
+               (iptr)Glb.Loc[loc_ColUnitVendor].Data(),
+               (iptr)Glb.Loc[loc_ColUnitDrive].Data(),
                0));
       popUnit->setID(ID_UnitSelect);
       popUnit->setCallbackHook(hHkButtonHook.GetHook());
@@ -192,20 +205,20 @@ unsigned long *MUIDrive::getObject()
       Child,                  HGroup,
          TextFrame,
          Child,                  HGroup,
-            Child,                  muiLabel(Glb.Loc[loc_DriveVendor], 0, ID_Default, Align_Right),
-            Child,                  vendor = muiLabel("---", 0, ID_DriveVendor, Align_Left),
+            Child,                  muiLabel(Glb.Loc[loc_DriveVendor], 0, ID_Default, 100, Align_Right),
+            Child,                  vendor = muiLabel("---", 0, ID_DriveVendor, 100, Align_Left),
             MUIA_Weight,            50,
          End,
 
          Child,                  HGroup,
-            Child,                  muiLabel(Glb.Loc[loc_DriveProduct], 0, ID_Default, Align_Right),
-            Child,                  product = muiLabel("---", 0, ID_DriveProduct, Align_Left),
+            Child,                  muiLabel(Glb.Loc[loc_DriveProduct], 0, ID_Default, 100, Align_Right),
+            Child,                  product = muiLabel("---", 0, ID_DriveProduct, 100, Align_Left),
             MUIA_Weight,            100,
          End,
 
          Child,                  HGroup,
-            Child,                  muiLabel(Glb.Loc[loc_DriveVersion], 0, ID_Default, Align_Right),
-            Child,                  version = muiLabel("---", 0, ID_DriveVersion, Align_Left),
+            Child,                  muiLabel(Glb.Loc[loc_DriveVersion], 0, ID_Default, 100, Align_Right),
+            Child,                  version = muiLabel("---", 0, ID_DriveVersion, 100, Align_Left),
             MUIA_Weight,            50,
          End,
       End,
@@ -218,36 +231,38 @@ unsigned long *MUIDrive::getObject()
 
       Child,                  ColGroup(2),
          MUIA_Group_SameSize,    true,
-         Child,                  muiLabel(Glb.Loc[loc_DriveMechanism], 0, ID_Default, Align_Right),
-         Child,                  mechanism = muiLabel("---", 0, ID_MechanismType, Align_Left),
-         Child,                  muiLabel(Glb.Loc[loc_DriveReadsMedia], 0, ID_Default, Align_Right),
-         Child,                  readmedia = muiLabel("---", 0, ID_ReadableMedia, Align_Left),
-         Child,                  muiLabel(Glb.Loc[loc_DriveWritesMedia], 0, ID_Default, Align_Right),
-         Child,                  writemedia = muiLabel("---", 0, ID_WritableMedia, Align_Left),
-         Child,                  muiLabel(Glb.Loc[loc_DriveWritesData], 0, ID_Default, Align_Right),
-         Child,                  writedata = muiLabel("---", 0, ID_SupportedData, Align_Left),
-         Child,                  muiLabel(Glb.Loc[loc_DriveBurnProof], 0, ID_Default, Align_Right),
-         Child,                  burnproof = muiLabel("---", 0, ID_Burnproof, Align_Left),
-         Child,                  muiLabel(Glb.Loc[loc_DriveISRC], 0, ID_Default, Align_Right),
-         Child,                  isrc = muiLabel("---", 0, ID_ISRC, Align_Left),
-         Child,                  muiLabel(Glb.Loc[loc_DriveCatalogNumber], 0, ID_Default, Align_Right),
-         Child,                  mcn = muiLabel("---", 0, ID_MCN, Align_Left),
-         Child,                  muiLabel(Glb.Loc[loc_DriveAudioStream], 0, ID_Default, Align_Right),
-         Child,                  audiostream = muiLabel("---", 0, ID_AudioStream, Align_Left),
-         Child,                  muiLabel(Glb.Loc[loc_DriveCDAudio], 0, ID_Default, Align_Right),
-         Child,                  audioplayback = muiLabel("---", 0, ID_AudioPlayback, Align_Left),
-         Child,                  muiLabel(Glb.Loc[loc_DriveTestMode], 0, ID_Default, Align_Right),
-         Child,                  testwrite = muiLabel("---", 0, ID_TestMode, Align_Left),
-         Child,                  muiLabel(Glb.Loc[loc_DriveMultiSession], 0, ID_Default, Align_Right),
-         Child,                  multisession = muiLabel("---", 0, ID_Multisession, Align_Left),
-         Child,                  muiLabel(Glb.Loc[loc_DriveCDText], 0, ID_Default, Align_Right),
-         Child,                  cdtext = muiLabel("---", 0, ID_CDText, Align_Left),
-         Child,                  muiLabel(Glb.Loc[loc_DriveReadSpeeds], 0, ID_Default, Align_Right),
-         Child,                  readspeeds = muiLabel("---", 0, ID_ReadSpeeds, Align_Left),
-         Child,                  muiLabel(Glb.Loc[loc_DriveWriteSpeeds], 0, ID_Default, Align_Right),
-         Child,                  writespeeds = muiLabel("---", 0, ID_WriteSpeeds, Align_Left),
-         Child,                  muiLabel(Glb.Loc[loc_DriveStatus], 0, ID_Default, Align_Right),
-         Child,                  state = muiLabel("---", 0, ID_DriveStatus, Align_Left),
+         Child,                  muiLabel(Glb.Loc[loc_DriveMechanism], 0, ID_Default, 100, Align_Right),
+         Child,                  mechanism = muiLabel("---", 0, ID_MechanismType, 100, Align_Left),
+         Child,                  muiLabel(Glb.Loc[loc_DriveReadsMedia], 0, ID_Default, 100, Align_Right),
+         Child,                  readmedia = muiLabel("---", 0, ID_ReadableMedia, 100, Align_Left),
+         Child,                  muiLabel(Glb.Loc[loc_DriveWritesMedia], 0, ID_Default, 100, Align_Right),
+         Child,                  writemedia = muiLabel("---", 0, ID_WritableMedia, 100, Align_Left),
+         Child,                  muiLabel(Glb.Loc[loc_DriveWritesData], 0, ID_Default, 100, Align_Right),
+         Child,                  writedata = muiLabel("---", 0, ID_SupportedData, 100, Align_Left),
+         Child,                  muiLabel(Glb.Loc[loc_DriveBurnProof], 0, ID_Default, 100, Align_Right),
+         Child,                  burnproof = muiLabel("---", 0, ID_Burnproof, 100, Align_Left),
+         Child,                  muiLabel(Glb.Loc[loc_DriveWriteProtect], 0, ID_Default, 100, Align_Right),
+         Child,                  writeprotect = muiLabel("---", 0, ID_WriteProtect, 100, Align_Left),
+         Child,                  muiLabel(Glb.Loc[loc_DriveISRC], 0, ID_Default, 100, Align_Right),
+         Child,                  isrc = muiLabel("---", 0, ID_ISRC, 100, Align_Left),
+         Child,                  muiLabel(Glb.Loc[loc_DriveCatalogNumber], 0, ID_Default, 100, Align_Right),
+         Child,                  mcn = muiLabel("---", 0, ID_MCN, 100, Align_Left),
+         Child,                  muiLabel(Glb.Loc[loc_DriveAudioStream], 0, ID_Default, 100, Align_Right),
+         Child,                  audiostream = muiLabel("---", 0, ID_AudioStream, 100, Align_Left),
+         Child,                  muiLabel(Glb.Loc[loc_DriveCDAudio], 0, ID_Default, 100, Align_Right),
+         Child,                  audioplayback = muiLabel("---", 0, ID_AudioPlayback, 100, Align_Left),
+         Child,                  muiLabel(Glb.Loc[loc_DriveTestMode], 0, ID_Default, 100, Align_Right),
+         Child,                  testwrite = muiLabel("---", 0, ID_TestMode, 100, Align_Left),
+         Child,                  muiLabel(Glb.Loc[loc_DriveMultiSession], 0, ID_Default, 100, Align_Right),
+         Child,                  multisession = muiLabel("---", 0, ID_Multisession, 100, Align_Left),
+         Child,                  muiLabel(Glb.Loc[loc_DriveCDText], 0, ID_Default, 100, Align_Right),
+         Child,                  cdtext = muiLabel("---", 0, ID_CDText, 100, Align_Left),
+         Child,                  muiLabel(Glb.Loc[loc_DriveReadSpeeds], 0, ID_Default, 100, Align_Right),
+         Child,                  readspeeds = muiLabel("---", 0, ID_ReadSpeeds, 100, Align_Left),
+         Child,                  muiLabel(Glb.Loc[loc_DriveWriteSpeeds], 0, ID_Default, 100, Align_Right),
+         Child,                  writespeeds = muiLabel("---", 0, ID_WriteSpeeds, 100, Align_Left),
+         Child,                  muiLabel(Glb.Loc[loc_DriveStatus], 0, ID_Default, 100, Align_Right),
+         Child,                  state = muiLabel("---", 0, ID_DriveStatus, 100, Align_Left),
       End,
       
       Child,                  RectangleObject,
@@ -256,7 +271,7 @@ unsigned long *MUIDrive::getObject()
 
    End;
 
-   _dx(Lvl_Info, "Page created (%08lx)", (uint)all);
+   _dx(Lvl_Info, "Page created (%08lx)", (iptr)all);
    return all;
 }
 
@@ -268,17 +283,6 @@ bool MUIDrive::start()
 
 void MUIDrive::stop()
 {
-   _dx(Lvl_Info, "Disposing PopDevice/PopUnit elements");
-   if (popDevice != 0)
-      delete popDevice;
-   popDevice = 0;
-
-   if (popUnit != 0)
-      delete popUnit;
-   popUnit = 0;
-
-   all = 0;
-   _dx(Lvl_Info, "All done.");
 }
 
 void MUIDrive::update()
@@ -295,7 +299,7 @@ void MUIDrive::update()
    if (eng->isOpened())
    {
       _dx(Lvl_Info, "Unit opened -> updating display");
-      unsigned long caps = eng->getCapabilities();
+      iptr caps = eng->getCapabilities();
       const char  *a = Glb.Loc[loc_Supported], 
                   *b = Glb.Loc[loc_Unsupported];
 
@@ -313,6 +317,7 @@ void MUIDrive::update()
       muiSetText(ID_Multisession,   caps & DRT_Can_Read_MultiSession    ?  a :  b);
       muiSetText(ID_CDText,         caps & DRT_Can_Read_CDText          ?  a :  b);
       muiSetText(ID_AudioPlayback,  caps & DRT_Can_Play_Audio           ?  a :  b);
+      muiSetText(ID_WriteProtect,   caps & DRT_Can_Do_WriteProtect      ?  a :  b);
       muiSetText(ID_AudioStream,    caps & DRT_Can_Read_CDAudioAccurate ?  Glb.Loc[loc_Accurate]   : Glb.Loc[loc_Jittered]);
       muiSetText(ID_ReadSpeeds,     speedsToString(eng->getReadSpeeds()));
       muiSetText(ID_WriteSpeeds,    speedsToString(eng->getWriteSpeeds()));
@@ -339,6 +344,7 @@ void MUIDrive::update()
       muiSetText(ID_ReadSpeeds,     "---");
       muiSetText(ID_WriteSpeeds,    "---");
       muiSetText(ID_DriveStatus,    "---");
+      muiSetText(ID_WriteProtect,   "---");
    }
    Glb.CurrentEngine->Release();
    _dx(Lvl_Info, "All done.");
@@ -363,7 +369,7 @@ String MUIDrive::mechanismToString(DRT_Mechanism t)
    return s;
 }
 
-String MUIDrive::mediaToString(unsigned long val)
+String MUIDrive::mediaToString(iptr val)
 {
    Set      t(val);
    String   s = "";
@@ -440,11 +446,11 @@ String MUIDrive::mediaToString(unsigned long val)
       e = true;
    }
 
-   _dx(Lvl_Info, "Media string: %s", (uint)s.Data());
+   _dx(Lvl_Info, "Media string: %s", (iptr)s.Data());
    return s;
 }
 
-String MUIDrive::dataToString(unsigned long val)
+String MUIDrive::dataToString(iptr val)
 {
    String s = "";
 
@@ -456,35 +462,35 @@ String MUIDrive::dataToString(unsigned long val)
    if (val & DRT_Can_Read_CDAudio)
       s += "CD-Audio, ";
 
-   _dx(Lvl_Info, "Data string: %s", (uint)s.Data());
+   _dx(Lvl_Info, "Data string: %s", (iptr)s.Data());
 
    return s;
 }
 
 String MUIDrive::speedsToString(DiscSpeed *speeds)
 {
-   String   s     = "";
-   String   t;
-   int      idx;
+    String   s     = "";
+    String   t;
+    int      idx;
 
-   _dx(Lvl_Info, "Constructing speeds string");
+    _dx(Lvl_Info, "Constructing speeds string");
 
-   if (speeds == 0)
-      return s;
+    if (speeds == 0)
+        return s;
 
-   for (idx=0; speeds[idx].kbps != 0; idx++)
-   {
-      t = Glb.Loc.FormatNumber(speeds[idx].i, speeds[idx].f * 100000) + "x";
-      if (s.Length() > 0)
-         s += ", ";
-      s += t;
-   }
-   
-   _dx(Lvl_Info, "String: %s", (uint)s.Data());
-   return s;
+    for (idx=0; speeds[idx].begin_kbps != 0; idx++)
+    {
+        Glb.FormatSpeed(t, speeds[idx], true);
+        if (s.Length() > 0)
+            s += ", ";
+        s += t;
+    }
+
+    _dx(Lvl_Info, "String: %s", (iptr)s.Data());
+    return s;
 }
 
-unsigned long MUIDrive::buttonHook(int id, void* data)
+iptr MUIDrive::buttonHook(int id, void* data)
 {
    switch (id)
    {
@@ -499,7 +505,7 @@ unsigned long MUIDrive::buttonHook(int id, void* data)
          {
             bool  res;
 
-            lUnit = (long)data;
+            lUnit = (iptr)data;
             IEngine *peng = Glb.CurrentEngine->ObtainRead();
             res = peng->openDevice(sDevice, lUnit);
             Glb.CurrentEngine->Release();

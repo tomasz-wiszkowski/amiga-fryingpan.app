@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,9 +10,9 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
@@ -43,13 +43,13 @@ bool MUISpeedSelect::vecDeleteName(const char* const& name)
    return true;
 }
 
-unsigned long MUISpeedSelect::btnHook(long id, void* data)
+iptr MUISpeedSelect::btnHook(iptr id, void* data)
 {
    switch (id)
    {
       case ID_SwitchSpeed:
          {
-            long which = (long)data;
+            iptr which = (iptr)data;
             if (speeds.Count() == 0)
                return 0;
             hook(this->id, speeds[which]);
@@ -79,18 +79,17 @@ void MUISpeedSelect::rebuildCycle(DiscSpeed *speeds, uint16 currspd)
 
    if (speeds != 0)
    {
-      for (int i=0; speeds[i].kbps != 0; i++)
-      {
-         s = Glb.Loc.FormatNumber(speeds[i].i, speeds[i].f * 100000) + "x (";
-         s += Glb.Loc.FormatNumber(speeds[i].kbps) + " kBps)";
-         names << dupstr(s.Data());
-         this->speeds << speeds[i].kbps;
-         if (currspd >= speeds[i].kbps)
-         {
-            which = i;
-            currspd = 0;
-         }
-      }
+       for (int i=0; speeds[i].begin_kbps != 0; i++)
+       {
+	   Glb.FormatSpeed(s, speeds[i], false);
+	   names << dupstr(s.Data());
+	   this->speeds << speeds[i].begin_kbps;
+	   if (currspd >= speeds[i].begin_kbps)
+	   {
+	       which = i;
+	       currspd = 0;
+	   }
+       }
    }
    
    if (names.Count() == 0)
@@ -103,7 +102,7 @@ void MUISpeedSelect::rebuildCycle(DiscSpeed *speeds, uint16 currspd)
    cycle = muiCycle(const_cast<const char**>(names.GetArray()), 0, ID_SwitchSpeed, which);
 
    Intuition->SetAttrsA(cycle, (TagItem*)ARRAY(
-      MUIA_ContextMenu,    (long)menu->getObject(),
+      MUIA_ContextMenu,    (iptr)menu->getObject(),
       TAG_DONE,            0
    ));
 
@@ -127,7 +126,7 @@ void MUISpeedSelect::stop()
 {
 }
 
-unsigned long *MUISpeedSelect::getObject()
+iptr *MUISpeedSelect::getObject()
 {
    cycle = 0;
    pager = PageGroup,

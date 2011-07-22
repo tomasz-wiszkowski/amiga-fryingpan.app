@@ -1,25 +1,22 @@
+#Wrapper.o						\
 
 OBJS = \
-	Wrapper.o						\
+	Plug.o							\
 	Engine.o						\
-	Track.o							\
-	ISOTrack.o						\
 	Globals.o						\
 	Event.o							\
 	Jobs/Job.o						\
 	Jobs/JobControl.o				\
+	Jobs/JobWriteProtect.o			\
 	Jobs/JobMediumAction.o			\
 	Jobs/JobDownload.o				\
 	Jobs/JobUpload.o				\
 	Jobs/JobUploadSession.o			\
 	Jobs/JobLayout.o				\
 	Jobs/JobUpdate.o				\
-	Jobs/JobCreateISO.o				\
-	Jobs/JobISOAddItem.o			\
-	Jobs/JobISORemItem.o			\
-	Jobs/JobISOMakeDir.o
+	Jobs/JobCreateISO.o
 	
-Program			= fryingpan.engine
+Program			= engine.plugin
 
 TARGETS			= aros os3 morphos os4
 OBJDIRS			= Jobs

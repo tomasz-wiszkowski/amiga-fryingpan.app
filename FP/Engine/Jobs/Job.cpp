@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,25 +10,27 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+
 #include "Job.h"
 #include <LibC/LibC.h>
 
-Job::Job(unsigned long drv)
+Job::Job(Globals& glb, unsigned long drv) :
+    g(glb)
 {
    ASSERT(0 != drv);
-   ASSERT(NULL != pOptical);
+   ASSERT(g.Optical.IsValid());
    if (drv != 0)
    {
-      if (pOptical != NULL)
+      if (g.Optical.IsValid())
       {
-         drv = pOptical->OptDoMethodA(ARRAY(DRV_CloneDrive, drv));
+         drv = g.Optical->DoMethodA(ARRAY(DRV_CloneDrive, drv));
       }
    }
 
@@ -38,13 +40,13 @@ Job::Job(unsigned long drv)
 Job::~Job()
 {
    ASSERT(0 != Drive);
-   ASSERT(NULL != pOptical);
+   ASSERT(g.Optical.IsValid());
 
    if (Drive != 0)
    {
-      if (pOptical != NULL)
+      if (g.Optical.IsValid())
       {
-         pOptical->OptDoMethodA(ARRAY(DRV_EndDrive, Drive));
+         g.Optical->DoMethodA(ARRAY(DRV_EndDrive, Drive));
       }
    }
 }

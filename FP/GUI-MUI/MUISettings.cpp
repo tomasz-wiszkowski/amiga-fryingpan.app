@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,9 +10,9 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
@@ -22,7 +22,8 @@
 #include <libraries/mui.h>
 #include <Generic/ConfigParser.h>
 #include "Globals.h"
-#include "../IEngine.h"
+#include <DTLib/DTLib.h>
+#include <DTLib/ISpec.h>
 
 /*
  * localization area
@@ -72,21 +73,10 @@ MUISettings::MUISettings(ConfigParser *parent, Globals &glb) :
    hkButton.Initialize(this, &MUISettings::button);
 
    setButtonCallBack(hkButton.GetHook());
-   glb.Loc.Add((Localization::LocaleSet*)LocaleSets, LocaleGroup);
+   glb.Loc.AddGroup((Localization::LocaleSet*)LocaleSets, LocaleGroup);
 }
 
 MUISettings::~MUISettings()
-{
-   delete Config;
-}
-
-bool MUISettings::start()
-{
-   update();
-   return true;
-}
-
-void MUISettings::stop()
 {
    if (popDataExport)
       delete popDataExport;
@@ -101,6 +91,18 @@ void MUISettings::stop()
    popSessionExport = 0;
    popDOSDevice = 0;
    all = 0;
+
+   delete Config;
+}
+
+bool MUISettings::start()
+{
+   update();
+   return true;
+}
+
+void MUISettings::stop()
+{
 }
 
 unsigned long *MUISettings::getObject()
@@ -131,14 +133,14 @@ unsigned long *MUISettings::getObject()
          GroupFrameT(Glb.Loc[loc_ExportSettings].Data()),
          Child,                  ColGroup(2),
             MUIA_Group_SameWidth,   false,
-            Child,                  muiLabel(Glb.Loc[loc_ExportDataAs], 0, -1, Align_Right),
+            Child,                  muiLabel(Glb.Loc[loc_ExportDataAs], 0, -1, 20, Align_Right),
             Child,                  popDataExport->getObject(),
-            Child,                  muiLabel(Glb.Loc[loc_ExportSessionsAs], 0, -1, Align_Right),
+            Child,                  muiLabel(Glb.Loc[loc_ExportSessionsAs], 0, -1, 20, Align_Right),
             Child,                  popSessionExport->getObject(),
          End,
          Child,                  ColGroup(2),
             MUIA_Group_SameWidth,   false,
-            Child,                  muiLabel(Glb.Loc[loc_ExportAudioAs], 0, -1, Align_Right),
+            Child,                  muiLabel(Glb.Loc[loc_ExportAudioAs], 0, -1, 20, Align_Right),
             Child,                  popAudioExport->getObject(),
             Child,                  muiLabel(""),
             Child,                  muiLabel(""),
@@ -165,6 +167,7 @@ unsigned long *MUISettings::getObject()
 void MUISettings::update()
 {
    IEngine *eng = Glb.CurrentEngine->ObtainRead();
+   const ISpec *spc;
 
    popDOSDevice->setValue(eng->getDOSDevice());
    muiSetSelected(ID_DOSInhibit, eng->getDOSInhibit());
@@ -173,22 +176,32 @@ void MUISettings::update()
    popAudioExport->clearList();
    popSessionExport->clearList();
       
-   for (int i=0; i<eng->getDataExports().Count(); i++)
+   for (spc = Glb.DT->GetNextSpec(0,   Spec_Data + Spec_Writer);
+	spc != 0;
+	spc = Glb.DT->GetNextSpec(spc, Spec_Data + Spec_Writer))
    {
-//      MessageBox("Info", "Entry: %s", "Ok", ARRAY((int)eng->getDataExports()[i]));
-      popDataExport->addEntry(eng->getDataExports()[i]);
+#warning we want to have spec here rather than name..
+      popDataExport->addEntry(spc->getName());
    }
 
-   for (int i=0; i<eng->getAudioExports().Count(); i++)
-   {
-      popAudioExport->addEntry(eng->getAudioExports()[i]);
+   for (spc = Glb.DT->GetNextSpec(0,   Spec_Audio + Spec_Writer);
+	spc != 0;
+	spc = Glb.DT->GetNextSpec(spc, Spec_Audio + Spec_Writer))
+    {
+#warning we want to have spec here rather than name..
+      popAudioExport->addEntry(spc->getName());
    }
 
-   for (int i=0; i<eng->getSessionExports().Count(); i++)
+   for (spc = Glb.DT->GetNextSpec(0,   Spec_Session + Spec_Writer);
+	spc != 0;
+	spc = Glb.DT->GetNextSpec(spc, Spec_Session + Spec_Writer))
    {
-      popSessionExport->addEntry(eng->getSessionExports()[i]);
+#warning we want to have spec here rather than name..
+      popSessionExport->addEntry(spc->getName());
    }
 
+#warning replace these with good calls!
+   /*
    if (eng->getDataExport() != NULL)
    {
       popDataExport->setValue(eng->getDataExport());
@@ -215,6 +228,7 @@ void MUISettings::update()
    {
       popSessionExport->setValue(Glb.Loc[loc_NotSet].Data());
    }
+   */
 
    Glb.CurrentEngine->Release();
 }
@@ -225,6 +239,7 @@ unsigned long MUISettings::button(BtnID id, void* data)
 
    switch (id)
    {
+#if 0
       case ID_DataExport:
          eng->setDataExport((const char*)data);
          break;
@@ -236,6 +251,7 @@ unsigned long MUISettings::button(BtnID id, void* data)
       case ID_SessionExport:
          eng->setSessionExport((const char*)data);
          break;
+#endif
 
       case ID_FindDOSDevice:
          popDOSDevice->setValue(eng->findMatchingDOSDevice());

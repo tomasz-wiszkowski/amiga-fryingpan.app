@@ -1,405 +1,385 @@
-/*
- * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation; either version 2.1
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 #include "Headers.h"
 #include "Disc_CD_RW.h"
 #include "Config.h"
 #include "CfgCDInfo.h"
+#include "SCSI/scsi_GetConfiguration.h"
 
 
-Disc_CD_RW::Disc_CD_RW(Drive *d) : Disc_CD_R(d)
+Disc_CD_RW::Disc_CD_RW(Drive &d) : 
+    Disc_CD_R(d),
+    fmt(dio, result)
 {
-   meas        = 0;
-   readfmtcaps = 0;
-   readfmtcaps = new cmd_ReadFormatCapacities(dio);
-   readfmtcaps->Go();
+    fmt.ReadFormats();
+
+    _D(Lvl_Info, "Disc formatted? : %ld", fmt.IsFormatted());
+    _D(Lvl_Info, "Max capacity    : %ld blocks", fmt.GetMaxCapacity());
+
+    meas        = 0;
 };
-
-void Disc_CD_RW::Init(void)
-{
-   Disc_CD_R::Init();
-}
 
 Disc_CD_RW::~Disc_CD_RW(void)
 {
-   delete readfmtcaps;
 };
 
-int Disc_CD_RW::EraseDisc(int met)
+bool Disc_CD_RW::Init()
 {
-   cmd_Blank::BlankType type;
-   int                  err;
-   cmd_StartStopUnit    ssu(dio);
+    bool flag = Disc_CD_R::Init();
+    const IOptItem* item = GetContents();
 
-   ssu.setType(cmd_StartStopUnit::StartStop_Start);
-   ssu.Go();
+    if (fmt.IsFormatted() && (item != 0))
+    {
+	const_cast<IOptItem*>(item->getChild(0)->getChild(0))->setIncremental(true);
+    }
+    item->release();
 
-   if (NULL != atip)
-   {
-      switch (met)
-      {
-         case DRT_Blank_Complete:
-            meas = drive->GetHardwareConfig()->CDInfo()->getCBlankMeas(atip->GetLeadOutPos(), GetWriteSpeed());
-            break;
-
-         case DRT_Blank_Fast:
-            meas = drive->GetHardwareConfig()->CDInfo()->getQBlankMeas(atip->GetLeadOutPos(), GetWriteSpeed());
-            break;
-
-         default:
-            meas = 0;
-      }
-   }
-
-   err = SetWriteMethod(DRT_WriteMethod_TAO);
-   if (err) return err;
-
-   switch (met) {
-      case DRT_Blank_Complete:
-         type = cmd_Blank::Blank_All;
-         break;
-      case DRT_Blank_Fast:
-         type = cmd_Blank::Blank_Minimal;
-         break;
-      case DRT_Blank_Session:
-         type = cmd_Blank::Blank_Session;
-         break;
-      default:
-         return ODE_IllegalParameter;
-   }
-
-   Calibrate();
-
-   cmd_Blank  *blk = new cmd_Blank(dio);
-   blk->setType(type, 0);
-   blk->setImmediate(true);
-
-   if (0 != meas)
-      meas->begin();
-
-   err = blk->Go();
-   WaitOpComplete();
-
-   if ((err == ODE_OK) && (0 != meas))
-      meas->end();
-
-   meas = 0;
-
-//   if (err == ODE_OK) Init();
-   RequestUpdate();
-
-   delete blk;
-   return err;
+    return flag;
 }
 
-int Disc_CD_RW::FormatDisc(int met)
+DriveStatus& Disc_CD_RW::EraseDisc(DRT_Blank met)
 {
-   int          err;
-   cmd_StartStopUnit    ssu(dio);
+    cmd_StartStopUnit	    ssu(dio, result);
+    SCSICommand*	    prep = 0;
+    DRT_Operation	    op;
+    DRT_WriteMethod	    mtd = DRT_WriteMethod_TAO;
+    
+    meas = 0;
 
-   ssu.setType(cmd_StartStopUnit::StartStop_Start);
-   ssu.Go();
-   
-   err = SetWriteMethod(DRT_WriteMethod_Packet);
-   if (err) return err;
+    ssu.setType(cmd_StartStopUnit::StartStop_Start);
+    ssu.Go();
 
-   readfmtcaps->Go();
-//   if (readfmtcaps->IsFormatted()) 
-//      return ODE_OK;
+    if (NULL != atip)
+    {
+	switch (met)
+	{
+	    case DRT_Blank_Erase_Complete:
+		{
+		    mtd = DRT_WriteMethod_TAO;
+		    op	= DRT_Operation_Erase_BlankComplete;
 
-   cmd_Format  *fmt;
+		    cmd_Blank* blk = new cmd_Blank(dio, result);
+		    blk->setType(cmd_Blank::Blank_All, 0);
+		    blk->setImmediate(true);
+		    prep = blk;
+		    if (0 != atip)
+			meas = drive.GetHardwareConfig()->CDInfo()->getCBlankMeas(atip->GetLeadOutPos(), GetWriteSpeed());
+		}
+		break;
 
-   fmt = new cmd_Format(dio);
+	    case DRT_Blank_Default:
+	    case DRT_Blank_Erase_Fast:
+		{
+		    mtd = DRT_WriteMethod_TAO;
+		    op	= DRT_Operation_Erase_BlankFast;
 
-   if (NULL != atip)
-   {
-      meas = drive->GetHardwareConfig()->CDInfo()->getCFormatMeas(atip->GetLeadOutPos(), GetWriteSpeed());
-   }
+		    cmd_Blank* blk = new cmd_Blank(dio, result);
+		    blk->setType(cmd_Blank::Blank_Minimal, 0);
+		    blk->setImmediate(true);
+		    prep = blk;
+		    if (0 != atip)
+			meas = drive.GetHardwareConfig()->CDInfo()->getQBlankMeas(atip->GetLeadOutPos(), GetWriteSpeed());
+		}
+		break;
 
+	    case DRT_Blank_Erase_Session:
+		{
+		    mtd = DRT_WriteMethod_TAO;
+		    op	= DRT_Operation_Erase_BlankSession;
 
-//   fmt->setType(cmd_Format::Format_MRW_FullFormat, 0xffffffff, 0);
-//   fmt->setImmediate(0);
+		    cmd_Blank* blk = new cmd_Blank(dio, result);
+		    blk->setType(cmd_Blank::Blank_Session, 0);
+		    blk->setImmediate(true);
+		    prep = blk;
+		}
+		break;
 
-   fmt->setType(cmd_Format::Format_CD_DVD_FullFormat, readfmtcaps->GetMaxCapacity(), 0);
-   fmt->setImmediate(true);
+	    case DRT_Blank_Format_Complete:
+	    case DRT_Blank_Format_Fast:
+		{
+		    mtd = DRT_WriteMethod_Packet;
+		    op	= DRT_Operation_Erase_FormatComplete;
 
-   Calibrate();
+		    scsi_Format* blk = new scsi_Format(dio, result);
 
-   if (0 != meas)
-      meas->begin();
-   err = fmt->Go();
-   WaitOpComplete();
-   if ((err == ODE_OK) && (0 != meas))
-      meas->end();
+		    blk->SetType(true, Format_CD_DVD_FullFormat, GetDiscSize() & ~15, 16);
+		    blk->SetImmediate(true);
+		    prep = blk;
+		    if (0 != atip)
+			meas = drive.GetHardwareConfig()->CDInfo()->getCFormatMeas(atip->GetLeadOutPos(), GetWriteSpeed());
+		}
+		break;
 
-   if (!err)
-      err = fmt->Go();
+	    default:
+		return result.Complete(ODE_IllegalParameter);
+	}
+    }
+    else
+    {
+	return result.Complete(ODE_IllegalCommand);
+    }
 
-   meas = 0;
-      
-   RequestUpdate();
-   delete fmt;
-   return err;
+    result = SetWriteMethod(mtd);
+    if (result != ODE_OK) 
+    {
+	delete prep;
+	return result;
+    }
+    /* TODO: CALIBRATING ? */
+    Calibrate();
+
+    if (0 != meas)
+	meas->begin();
+
+    Notify(result(op, DRT_OpStatus_InProgress));
+    prep->Go();
+    WaitOpComplete();
+    Notify(result(op, DRT_OpStatus_Completed));
+
+    if ((result == ODE_OK) && (0 != meas))
+	meas->end();
+
+    meas = 0;
+
+    //   if (err == ODE_OK) Init();
+    RequestUpdate();
+
+    delete prep;
+
+    return result;
 }
 
-int Disc_CD_RW::StructureDisc(void)
+DriveStatus& Disc_CD_RW::CloseDisc(DRT_Close lType, int lTrack)
 {
-   int err;
-   err = EraseDisc(DRT_Blank_Fast);
-   if (err) return err;
-   return ODE_OK;
-};
+    if (DiscType() != DRT_Profile_CD_MRW)
+	return (result = Disc_CD_R::CloseDisc(lType, lTrack));
 
-int Disc_CD_RW::CloseDisc(int lType, int lTrack)
-{
-   if (DiscType() != DRT_Profile_CD_MRW)
-      return Disc_CD_R::CloseDisc(lType, lTrack);
-      
-   cmd_Close *cl = new cmd_Close(dio);
+    cmd_Close *cl = new cmd_Close(dio, result);
 
-   cl->setType(cmd_Close::Close_FlushBuffers, 0);
-   cl->setImmediate(true);
-   cl->Go();
-   WaitOpComplete();
+    Notify(result(DRT_Operation_Write_Synchronize));
+    cl->setType(cmd_Close::Close_FlushBuffers, 0);
+    cl->Go();
+    WaitOpComplete();
 
-   if (lType == DRT_Close_Track) {
-      cl->setType(cmd_Close::Close_FlushBuffers, 0);
-   } else if (lType == DRT_Close_Session) {
-      cl->setType(cmd_Close::Close_CDMRW_StopFormat, 0);
-   } else if (lType == DRT_Close_Finalize) {
-      cl->setType(cmd_Close::Close_CDMRW_Finalize, 0);
-   }
+    if (lType == DRT_Close_Track) 
+    {
+	Notify(result(DRT_Operation_Write_CloseTrack));
+	cl->setType(cmd_Close::Close_CDR_Track, lTrack);
+    } 
+    else if (lType == DRT_Close_Session) 
+    {
+	Notify(result(DRT_Operation_Write_CloseSession));
+	cl->setType(cmd_Close::Close_CDMRW_StopFormat, 0);
+    } 
+    else if (lType == DRT_Close_Finalize) 
+    {
+	Notify(result(DRT_Operation_Write_CloseDisc));
+	cl->setType(cmd_Close::Close_CDMRW_Finalize, 0);
+    }
 
-   /*
-    * do not let immediate go up here. immediate flush causes problems.
-    */
-   //cl->setImmediate(true);
-   int error = cl->Go();
-   WaitOpComplete();
-   delete cl;
-   return error;
+    cl->setImmediate(true);
+    cl->Go();
+    WaitOpComplete();
+    delete cl;
+
+    return result;
 }
 
 bool Disc_CD_RW::AllowMultiSessionLayout()
 {
-   if (DiscType() == DRT_Profile_CD_MRW)
-      return false;
-   else
-      return Disc_CD_R::AllowMultiSessionLayout();
+    if (DiscType() == DRT_Profile_CD_MRW)
+	return false;
+    else
+	return Disc_CD_R::AllowMultiSessionLayout();
 }
 
 bool Disc_CD_RW::AllowMultiTrackLayout()
 {
-   if (DiscType() == DRT_Profile_CD_MRW)
-      return false;
-   else
-      return Disc_CD_R::AllowMultiTrackLayout();
+    if (DiscType() == DRT_Profile_CD_MRW)
+	return false;
+    else
+	return Disc_CD_R::AllowMultiTrackLayout();
 }
 
 int Disc_CD_RW::SessionGapSize()
 {
-   if (DiscType() == DRT_Profile_CD_MRW)
-      return 0;
-   else
-      return Disc_CD_R::SessionGapSize();
+    if (DiscType() == DRT_Profile_CD_MRW)
+	return 0;
+    else
+	return Disc_CD_R::SessionGapSize();
 }
 
 int Disc_CD_RW::TrackGapSize()
 {
-   if (DiscType() == DRT_Profile_CD_MRW)
-      return false;
-   else
-      return Disc_CD_R::TrackGapSize();
+    if (DiscType() == DRT_Profile_CD_MRW)
+	return false;
+    else
+	return Disc_CD_R::TrackGapSize();
 }
 
 int Disc_CD_RW::DiscType()
 {
-   if (IsFormatted()) 
-      return DRT_Profile_CD_MRW;
-   return DRT_Profile_CD_RW;
+    if (IsFormatted()) 
+	return DRT_Profile_CD_MRW;
+    return DRT_Profile_CD_RW;
 }
 
 int Disc_CD_RW::DiscSubType()
 {
-   if (atip) 
-   {
-      _D(Lvl_Info, "Analysing ATIP data...");
-      switch (atip->GetDiscSubType()) 
-      {
-         case 0:
-            _D(Lvl_Debug, "Got Low-Speed rewritable disc.");
-            return DRT_SubType_CD_RW_LowSpeed;
-         case 1:
-            _D(Lvl_Debug, "Got High-Speed rewritable disc.");
-            return DRT_SubType_CD_RW_HighSpeed;
-         case 2:
-            _D(Lvl_Debug, "Got Ultra-Speed rewritable disc.");
-            return DRT_SubType_CD_RW_UltraSpeed;
-         default:
-            _D(Lvl_Debug, "Unknown disc sub type %ld.", atip->GetDiscSubType());
-            return DRT_SubType_Unknown;
-      }
-   } 
-   else 
-   {
-      _D(Lvl_Debug, "No atip data, unknown disc sub type.");
-      return DRT_SubType_Unknown;
-   }
+    if (atip) 
+    {
+	_D(Lvl_Info, "Analysing ATIP data...");
+	switch (atip->GetDiscSubType()) 
+	{
+	    case 0:
+		_D(Lvl_Debug, "Got Low-Speed rewritable disc.");
+		return DRT_SubType_CD_RW_LowSpeed;
+	    case 1:
+		_D(Lvl_Debug, "Got High-Speed rewritable disc.");
+		return DRT_SubType_CD_RW_HighSpeed;
+	    case 2:
+		_D(Lvl_Debug, "Got Ultra-Speed rewritable disc.");
+		return DRT_SubType_CD_RW_UltraSpeed;
+	    default:
+		_D(Lvl_Debug, "Unknown disc sub type %ld.", atip->GetDiscSubType());
+		return DRT_SubType_Unknown;
+	}
+    } 
+    else 
+    {
+	_D(Lvl_Debug, "No atip data, unknown disc sub type.");
+	return DRT_SubType_Unknown;
+    }
 }
 
 bool Disc_CD_RW::IsOverwritable(void)
 {
-   if (DiscType() == DRT_Profile_CD_MRW)
-      return true;
+    if (DiscType() == DRT_Profile_CD_MRW)
+	return true;
 
-   cmd_GetConfiguration::Feature *x;
+    Feature *x;
 
-   x = drive->GetDriveFeature(cmd_GetConfiguration::Feature_RigidOverwrite);
-   if (x)
-      if (x->IsCurrent()) return true;
+    if (!IsFormatted())
+	return false;
 
-   x = drive->GetDriveFeature(cmd_GetConfiguration::Feature_RestrictedOverwrite);
-   if (x)
-      if (x->IsCurrent()) return true;
+    x = drive.GetFeatures().GetFeature<Feat_RigidOverwrite>();
+    if (x && x->IsCurrent()) 
+	return true;
 
-   return false;
+    x = drive.GetFeatures().GetFeature<Feat_RestrictedOverwrite>();
+    if (x && x->IsCurrent()) 
+	return true;
+
+    return false;
 
 };
 
 bool Disc_CD_RW::IsWritable(void)
 {
-   if (DiscType() == DRT_Profile_CD_MRW)
-      return true;
-   return Disc_CD_R::IsWritable();
+    if (DiscType() == DRT_Profile_CD_MRW)
+	return true;
+    return Disc_CD_R::IsWritable();
 };
 
 bool Disc_CD_RW::IsFormatted()
 {
-   if (0 == readfmtcaps)
-      return false;
-   #warning Zwracamy false poki nie naprawimy IsFormatted()!!!
-//   if (readfmtcaps->IsFormatted())
-//      return true;
-   return false;  
+    return (fmt.IsFormatted());
 }
 
-bool Disc_CD_RW::IsFormatable()
+bool Disc_CD_RW::IsFormattable()
 {
-   if (drive->GetDriveFeature(cmd_GetConfiguration::Feature_CD_MRW)) 
-      return true;
-   return false;
+    Feature *x = drive.GetFeatures().GetFeature<Feat_Formattable>();
+
+    return (x && x->IsCurrent());
 }
 
-int Disc_CD_RW::CheckItemData(const IOptItem *pDI)
+DriveStatus& Disc_CD_RW::CheckItemData(const IOptItem *pDI)
 {
-   if (DiscType() != DRT_Profile_CD_MRW)
-   {
-      return Disc_CD_R::CheckItemData(pDI);
-   }
-   
-   if (pDI->getPreGapSize() != 0)
-   {
-      _D(Lvl_Error, "Pad size other than 0 not allowed");
-      return ODE_BadLayout;
-   }
-   if (pDI->isIncremental())
-   {
-      _D(Lvl_Error, "Incremental tracks not allowed");
-      return ODE_BadLayout;
-   }
-   if (pDI->hasCDText())
-   {
-      _D(Lvl_Error, "CD-Text allowed only on CD media");
-      return ODE_BadLayout;
-   }
-   if (pDI->isPreemphasized())
-   {
-      _D(Lvl_Error, "Preemphasy allowed only on CD media");
-      return ODE_BadLayout;
-   }
-   
-   if (pDI->getItemType() == Item_Disc)
-   {
-      if (pDI->getFlags() && DIF_Disc_MasterizeCD)
-      {
-         _D(Lvl_Error, "Disc can not be masterized");
-         return ODE_BadLayout;
-      }
-   }
-   else if (pDI->getItemType() == Item_Session)
-   {
-   }
-   else if (pDI->getItemType() == Item_Track)
-   {
-      if (pDI->getDataType() != Data_Mode1)
-      {
-         _D(Lvl_Error, "Only Data/Mode1 tracks allowed on MRW media");
-         return ODE_BadLayout;
-      }
-      if (pDI->getSectorSize() != 2048)
-      {
-         _D(Lvl_Error, "Invalid sector size");
-         return ODE_BadLayout;
-      }
-   }
-   else if (pDI->getItemType() == Item_Index)
-   {
-      _D(Lvl_Error, "Indices not allowed");
-      return ODE_BadLayout;
-   }
+    if (DiscType() != DRT_Profile_CD_MRW)
+    {
+	return Disc_CD_R::CheckItemData(pDI);
+    }
 
-   return Disc::CheckItemData(pDI);
+    if (pDI->getPreGapSize() != 0)
+    {
+	_D(Lvl_Error, "Pad size other than 0 not allowed");
+	return result.Complete(ODE_BadLayout);
+    }
+    if (pDI->isIncremental())
+    {
+	_D(Lvl_Error, "Incremental tracks not allowed");
+	return result.Complete(ODE_BadLayout);
+    }
+    if (pDI->hasCDText())
+    {
+	_D(Lvl_Error, "CD-Text allowed only on CD media");
+	return result.Complete(ODE_BadLayout);
+    }
+    if (pDI->isPreemphasized())
+    {
+	_D(Lvl_Error, "Preemphasy allowed only on CD media");
+	return result.Complete(ODE_BadLayout);
+    }
+
+    if (pDI->getItemType() == Item_Disc)
+    {
+	if (pDI->getFlags() && DIF_Disc_MasterizeCD)
+	{
+	    _D(Lvl_Error, "Disc can not be masterized");
+	    return result.Complete(ODE_BadLayout);
+	}
+    }
+    else if (pDI->getItemType() == Item_Session)
+    {
+    }
+    else if (pDI->getItemType() == Item_Track)
+    {
+	if (pDI->getDataType() != Data_Mode1)
+	{
+	    _D(Lvl_Error, "Only Data/Mode1 tracks allowed on MRW media");
+	    return result.Complete(ODE_BadLayout);
+	}
+	if (pDI->getSectorSize() != 2048)
+	{
+	    _D(Lvl_Error, "Invalid sector size");
+	    return result.Complete(ODE_BadLayout);
+	}
+    }
+    else if (pDI->getItemType() == Item_Index)
+    {
+	_D(Lvl_Error, "Indices not allowed");
+	return result.Complete(ODE_BadLayout);
+    }
+
+    return Disc::CheckItemData(pDI);
 } 
 
-int Disc_CD_RW::BeginTrackWrite(const IOptItem*pDI)
+DriveStatus& Disc_CD_RW::BeginTrackWrite(const IOptItem*pDI)
 {
-   if (DiscType() != DRT_Profile_CD_MRW)
-   {
-      return Disc_CD_R::BeginTrackWrite(pDI);
-   }
-   const_cast<IOptItem*>(pDI)->setPreGapSize(0);
-   return ODE_OK;
-}
-
-int Disc_CD_RW::EndTrackWrite(const IOptItem*pDI)
-{
-   return ODE_OK;
+    if (DiscType() != DRT_Profile_CD_MRW)
+    {
+	return Disc_CD_R::BeginTrackWrite(pDI);
+    }
+    const_cast<IOptItem*>(pDI)->setPreGapSize(0);
+    return result.Complete();
 }
 
 int16 Disc_CD_RW::GetOperationProgress()
 {
-   if (meas != 0)
-   {
-      return meas->getProgress();
-   }
-   return Disc::GetOperationProgress();
+    if (meas != 0)
+    {
+	return meas->getProgress();
+    }
+    return Disc::GetOperationProgress();
 }
-   
+
 uint32 Disc_CD_RW::GetDiscSize()
 {
-//   if (0 != readfmtcaps)
-//      return readfmtcaps->GetMaxCapacity();
-   return Disc_CD_R::GetDiscSize();
+    if (fmt.IsFormatted())
+	return fmt.GetMaxCapacity();
+    return Disc_CD_R::GetDiscSize();
 }
 
 bool Disc_CD_RW::wantCDText() const
 {
-   return false;
+    return false;
 }
 

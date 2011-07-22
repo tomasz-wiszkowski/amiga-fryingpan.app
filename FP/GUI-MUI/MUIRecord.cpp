@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,9 +10,9 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
@@ -68,7 +68,7 @@ MUIRecord::MUIRecord(ConfigParser *parent, Globals &glb) :
    hBtnHook.Initialize(this, &MUIRecord::btnClicked);
    setButtonCallBack(hBtnHook.GetHook());
 
-   Glb.Loc.Add((Localization::LocaleSet*)&LocaleSets, LocaleGroup);
+   Glb.Loc.AddGroup((Localization::LocaleSet*)&LocaleSets, LocaleGroup);
 }
 
 MUIRecord::~MUIRecord()
@@ -82,10 +82,10 @@ MUIRecord::~MUIRecord()
 
 bool MUIRecord::start()
 {
-   do_masterize = Config->getValue("Masterize", (long)false);
-   do_closedisc = Config->getValue("CloseDisc", (long)false);
-   do_blankwrite = Config->getValue("BlankWrite", (long)false);
-   do_posteject = Config->getValue("PostEject", (long)true);
+   do_masterize = Config->getValue("Masterize", (iptr)false);
+   do_closedisc = Config->getValue("CloseDisc", (iptr)false);
+   do_blankwrite = Config->getValue("BlankWrite", (iptr)false);
+   do_posteject = Config->getValue("PostEject", (iptr)true);
 
    muiSetSelected(ID_Masterize, do_masterize);
    muiSetSelected(ID_CloseDisc, do_closedisc);
@@ -106,7 +106,7 @@ void MUIRecord::stop()
    all = 0;
 }
 
-uint32 *MUIRecord::getObject()
+iptr *MUIRecord::getObject()
 {
    if (NULL != all)
       return all;
@@ -135,7 +135,7 @@ uint32 *MUIRecord::getObject()
          Child,                  muiBar(),
 
          Child,                  HGroup,
-            Child,                  muiLabel(Glb.Loc[loc_WriteSpeed], 0, ID_Default, Align_Right),
+            Child,                  muiLabel(Glb.Loc[loc_WriteSpeed], 0, ID_Default, 0, Align_Right),
             Child,                  speedselect->getObject(),
          End,
       End,
@@ -156,7 +156,7 @@ uint32 *MUIRecord::getObject()
    return all;
 }
 
-uint32 MUIRecord::btnClicked(BtnID button, int32 state)
+iptr MUIRecord::btnClicked(BtnID button, int32 state)
 {
    switch (button)
    {

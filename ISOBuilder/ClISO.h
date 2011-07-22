@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,74 +10,122 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+
 #ifndef CLISO_H_
 #define CLISO_H_
 
-#include "IBrowser.h"
 #include "Structure/ClRoot.h"
 #include "ISOStructures.h"
 #include "Structure/ClRoot.h"
 #include <Generic/HookT.h>
 #include <Generic/VectorT.h>
 #include <Generic/Debug.h>
+#include <Optical/IOptItem.h>
+#include <Generic/MUI/MUI.h>
+#include "Globals.h"
+#include <DTLib/IData.h>
 
 using namespace GenNS;
+class CustomISOConfigPage;
 
 
-class ClISO : public IBrowser
+class ClISO : public IData
 {
+public:
+   enum ISOLevel
+   {
+      ISOLevel_1,
+      ISOLevel_2,
+      ISOLevel_3
+   };
+
+
 protected:
-   DbgHandler                         *debug;
+    DbgHandler       *debug;
+    const Globals&   Glb;
 
 public:
-   void                                setDebug(DbgHandler*);
-   DbgHandler                         *getDebug();
+    void             setDebug(DbgHandler*);
+    DbgHandler       *getDebug();
 
 protected:
 
-   ClRoot                             *pRoot;
-   ClDirectory                        *pCurrDir;
-   VectorT<const Hook*>                hDataHooks;
-   HookT<ClISO, void*, long>           hDataFetch;
-   bool                                bAbortDataFlow;
-   void                               *pMemBlk;
-   unsigned long                       lMemBlkSize;
-   unsigned long                       lCurrentPos;
+    ClRoot           *pRoot;
+    ClDirectory      *pCurrDir;
+    bool             bAbortDataFlow;
+    void             *pMemBlk;
+    iptr		    lMemBlkSize;
+    iptr		    lCurrentPos;
+    MUI		    mui;
+
 protected:
-   unsigned long                       fDataPass(void* Data, long lSize);
+    iptr*	    label;
+    CustomISOConfigPage*	page;
 
 public:
-                                       ClISO();
-   virtual                            ~ClISO();
+    ClISO(const Globals &g);
+    virtual                     ~ClISO();
 
-   virtual ClRoot                     *getRoot();
-   virtual ClDirectory                *getParent();
-   virtual ClDirectory                *getCurrDir();
-   virtual void                        goRoot();
-   virtual void                        goParent();
-   virtual void                        destroy();
-   virtual ClDirectory                *makeDir();
-   virtual void                        setCurrDir(ClDirectory*);
-   virtual unsigned long               validate();
-   virtual bool                        isEmpty();
+    virtual ClRoot              *getRoot();
+    virtual ClDirectory         *getParent();
+    virtual ClDirectory         *getCurrDir();
+    virtual void                 goRoot();
+    virtual void                 goParent();
+    virtual ClDirectory         *makeDir();
+    virtual void        setCurrDir(ClDirectory*);
+    virtual iptr	validate();
 
-   virtual void                        setISOLevel(ISOLevel);
-   virtual ISOLevel                    getISOLevel();
+    virtual void        setISOLevel(ISOLevel);
+    virtual ISOLevel    getISOLevel();
 
-   void                                addDataHook(const Hook *pHook);
-   void                                remDataHook(const Hook *pHook);
-  
-   bool                                recalculate(); 
-   bool                                generate();
-   long                                startDataFlow();
-   void                                abortDataFlow();
+    virtual bool	setUp(iptr start_block);
+    virtual bool	setUp(const IOptItem* trk);
+    virtual void	cleanUp();
+    virtual bool	readData(void* buf, int len);
+    virtual void	dispose();
+    virtual uint32	getBlockCount() const;
+    virtual bool        fillOptItem(IOptItem *item) const;
+
+    virtual iptr*       getSettingsPage() const;
+
+    /** all stuff that goes inline
+    */
+    virtual const char* getName() const
+    {
+	return "ISO Constructor";
+    }
+
+    virtual const char* getTrackName() const
+    {
+	return "ISO Constructor";
+    }
+
+    virtual bool	writeData(void* pBuff, int pLen)
+    {
+	return false;
+    }
+
+    virtual uint16	getBlockSize() const
+    {
+	return 2048;
+    }
+
+    virtual bool	isAudio() const
+    {
+	return false;
+    }
+
+    virtual bool	isData() const
+    {
+	return true;
+    }
 };
 
 #endif /*CLISO_H_*/

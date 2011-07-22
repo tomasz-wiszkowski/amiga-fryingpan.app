@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,9 +10,9 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
@@ -21,7 +21,7 @@
 #include <libclass/intuition.h>
 #include <libraries/mui.h>
 #include <Generic/ConfigParser.h>
-#include "MUIWindowMenu.h"
+#include <Generic/MUI/MUIWindowMenu.h>
 #include "../Globals.h"
 
 /*
@@ -87,7 +87,7 @@ MUIToolBar::MUIToolBar(ConfigParser *parent, Localization &loc) :
    active         = -1;
    labelPosition  = Label_Bottom;
    
-   Loc.Add((Localization::LocaleSet*)&LocaleSets, LocaleGroup);
+   Loc.AddGroup((Localization::LocaleSet*)&LocaleSets, LocaleGroup);
    pPicture = new MUICustomClassT<MUIPictureClass>(MUIC_Area);
    Config = new ConfigParser(parent, "ToolBar", 0);
    hOptions.Initialize(this, &MUIToolBar::setMenuOption);
@@ -133,7 +133,7 @@ void MUIToolBar::addButtons(const MUIToolBar::Button *definition)
    }
 }
 
-unsigned long *MUIToolBar::getObject()
+iptr *MUIToolBar::getObject()
 {
    if (0 != all)
       return all;
@@ -148,11 +148,11 @@ unsigned long *MUIToolBar::getObject()
    return all;
 }
 
-unsigned long *MUIToolBar::createButton(const MUIToolBar::Button *def)
+iptr *MUIToolBar::createButton(const MUIToolBar::Button *def)
 {
-   unsigned long    *btn;
-   unsigned long    *label = 0;
-   unsigned long    *image = 0;
+   iptr    *btn;
+   iptr    *label = 0;
+   iptr    *image = 0;
    String            s;
 
    if ((false == showImages) && (Label_None == labelPosition))
@@ -230,14 +230,14 @@ unsigned long *MUIToolBar::createButton(const MUIToolBar::Button *def)
    return btn;
 }
 
-unsigned long *MUIToolBar::createSeparator()
+iptr *MUIToolBar::createSeparator()
 {
    return RectangleObject,
       MUIA_FixWidth,    10,
    End;
 }
 
-unsigned long MUIToolBar::setMenuOption(MenuOption option, MUIWindowMenu*)
+iptr MUIToolBar::setMenuOption(MenuOption option, MUIWindowMenu*)
 {
    switch (option)
    {
@@ -298,15 +298,15 @@ void MUIToolBar::rebuildGadgets()
 {
    DoMtd(all, ARRAY(MUIM_Group_InitChange));
 
-   for (int i=0; i<buttons.Count(); i++)
+   for (uint32 i=0; i<buttons.Count(); i++)
    {
-      unsigned long *elem = buttons[i];
+      iptr *elem = buttons[i];
       DoMtd(all, ARRAY(OM_REMMEMBER, (int)elem));
    }
 
    buttons.Empty();
 
-   for (int i=0; i<defs.Count(); i++)
+   for (uint32 i=0; i<defs.Count(); i++)
    {
       switch (defs[i]->type)
       {
@@ -323,7 +323,7 @@ void MUIToolBar::rebuildGadgets()
       buttons << defs[i]->object;
    }
 
-   for (int i=0; i<buttons.Count(); i++)
+   for (uint32 i=0; i<buttons.Count(); i++)
    {
       DoMtd(all, ARRAY(OM_ADDMEMBER, (int)buttons[i]));
    }
@@ -332,7 +332,7 @@ void MUIToolBar::rebuildGadgets()
 
    if (active == -1)
    {
-      for (int32 i=0; i<defs.Count(); i++)
+      for (uint32 i=0; i<defs.Count(); i++)
       {
          if (defs[i]->type ==Type_Button)
          {
@@ -345,7 +345,7 @@ void MUIToolBar::rebuildGadgets()
    setSelected(active);
 }
 
-unsigned long MUIToolBar::reportChange(long, long *id)
+iptr MUIToolBar::reportChange(iptr, iptr *id)
 {
    setSelected(*id);
    return callBack.Call(this, (void*)*id);
@@ -363,7 +363,7 @@ void MUIToolBar::setThemePath(const char* theme)
 
 void MUIToolBar::setSelected(int32 id)
 {
-   for (int32 i=0; i<defs.Count(); i++)
+   for (uint32 i=0; i<defs.Count(); i++)
    {
       if (defs[i]->type == Type_Button)
       {

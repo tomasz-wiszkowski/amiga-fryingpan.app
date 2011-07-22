@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,23 +10,23 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+
 #include "JobCreateISO.h"
 
-JobCreateISO::JobCreateISO(uint32 drive, IBrowser *browser, IRegHook *module, const char* name) :
-   Job(drive)
+JobCreateISO::JobCreateISO(Globals &glb, uint32 drive, IData *browser, ISpec *module, const char* name) :
+   Job(glb, drive)
 {
    this->browser  = browser;
    this->name     = name;
    this->writer   = 0;
    this->hook     = module;
-   hHkCallback.Initialize(this, &JobCreateISO::dataCallback);
 }
 
 JobCreateISO::~JobCreateISO()
@@ -35,49 +35,45 @@ JobCreateISO::~JobCreateISO()
 
 void JobCreateISO::execute()
 {
-   EDtError rc = DT_OK;
+    EDtError rc = DT_OK;
 
-   ASSERT(NULL != hook);
-   if (NULL == hook)
-      return;
+    ASSERT(NULL != hook);
+    if (NULL == hook)
+	return;
 
-   ASSERT(NULL != browser)
-   if (NULL == browser)
-      return;
+    ASSERT(NULL != browser)
+	if (NULL == browser)
+	    return;
 
-   writer = hook->openWrite(name.Data(), 0, rc);
+    writer = hook->openWrite(name.Data(), rc);
 
-   if (NULL != writer)
-   {
-      numBlocks = browser->validate();
-      currBlock = 0;
-      writer->setBlockSize(2048);
-      writer->setBlockCount(numBlocks);
-      writer->setUp();
-      
-      browser->addDataHook(hHkCallback.GetHook());
-      browser->startDataFlow();
-      browser->remDataHook(hHkCallback.GetHook());
+    if (NULL != writer)
+    {
+	currBlock = 0;
+	writer->setUp(0);
+	browser->setUp(0);
+	iptr seccnt = numBlocks;
+	uint8 *buf = new uint8[16 * 2048];
 
-      writer->cleanUp();
-      writer->dispose();
-   }
+	while (seccnt != 0)
+	{
+	    browser->readData(buf, 16);
+	    writer->writeData(buf, 16);
+
+	    currBlock += seccnt <? 16;
+	    seccnt -= seccnt <? 16;
+	}
+
+	writer->cleanUp();
+	writer->dispose();
+	browser->cleanUp();
+	delete [] buf;
+    }
 }
 
-unsigned long JobCreateISO::dataCallback(void* src, long len)
+uint32 JobCreateISO::getProgress()
 {
-   if (len > 0)
-   {
-      writer->writeData(src, len);
-      currBlock += len;
-   }
-
-   return true;
-}
-
-unsigned long JobCreateISO::getProgress()
-{
-   unsigned long long s1, s2;
+   uint64 s1, s2;
 
    s2 = numBlocks;
    s1 = currBlock;
@@ -87,7 +83,7 @@ unsigned long JobCreateISO::getProgress()
       s1 >>= 1;
    }
 
-   return ((long)s1 * 65535) / (long)s2;
+   return ((uint32)s1 * 65535) / (uint32)s2;
 }
 
 const char *JobCreateISO::getActionName()

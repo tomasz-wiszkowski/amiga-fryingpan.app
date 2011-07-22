@@ -1,61 +1,50 @@
-/*
- * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation; either version 2.1
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
-#include "../Generic/LibrarySpool.h"
+#include <Generic/LibrarySpool.h>
+#include <libclass/intuition.h>
 #include "Headers.h"
 #include "Drive.h"
 #include "Main.h"
 #include <exec/memory.h>
-#include "Humming.h"
-#include "Config.h"
 #include "IOptItem.h"
 #include "OptDisc.h"
 #include "OptTrack.h"
+#include "IDriveClient.h"
 
 #include <libclass/utility.h>
+#include <PlugLib/PlugLib.h>
+#include <dos/dos.h>
+#include <dos/dos.h>
+
+#include <Generic/HashT.h>
 
 uint32 StartupFlags = 0;
+PlugLibIFace* plg = 0;
 
 using namespace GenNS;
+static char programname[64];
+static BPTR out;
 
-   Config               *Cfg;
-   bool                  AllClear;
-   bool                  Clear1, Clear2;
-
-unsigned long DoLibMethodA(unsigned long *parm)
+#if 0
+iptr DoLibMethodA(iptr *parm)
+{
+    request("Info", "Sorry, interface has changed.", "Ok", 0);
+    return 0;
+}
 {
    LONG           rc  = 0;
-   DriveClient   *drv = 0;
+   Drive         *drv = 0;
 
    if (!parm) return 0;
-   drv = (DriveClient*)parm[1];
+   drv = (Drive*)parm[1];
 
    switch (*parm) {
       case DRV_ScanDevice:       return Drive::ScanDevice((char*)parm[1]);
       case DRV_FreeScanResults:  return Drive::FreeScanResults((ScanData*)parm[1]);
-      case DRV_NewDrive:         return (ULONG)DriveSpool::GetInstance()->NewClient((char*)parm[1], parm[2]);
-      case DRV_CloneDrive:       return (ULONG)DriveSpool::GetInstance()->CloneClient(drv);
-      case DRV_EndDrive:         DriveSpool::GetInstance()->DelClient(drv); return 0;
+      case DRV_NewDrive:         return (iptr)DriveSpool::GetDriveClient((char*)parm[1], parm[2]);
+      case DRV_CloneDrive:       return (iptr)DriveSpool::CloneDrive(drv);
+      case DRV_EndDrive:         DriveSpool::FreeDriveClient(drv); return 0;
       case DRV_GetAttr:          return drv->GetDriveAttrs(parm[2]);
       case DRV_GetAttrs:         return drv->GetDriveAttrs((struct TagItem*)&parm[2]);
-      case DRV_WaitForDisc:      return drv->WaitForDisc(parm[2]);
-      default:                   return drv->Send(parm);
+      default:                   return drv->SendMessage(parm);
    }
    return rc;
 }
@@ -64,174 +53,437 @@ class IOptItem* OptCreateDisc()
 {
    return new OptDisc();
 }
+#endif
   
-bool SetUp(void)
+struct args 
 {
-   LibrarySpool::Init();
+    char    *drive;
+    int     *unit;
+    int      show_contents;
 
-   Cfg = new Config();
-   Clear2 = analyze(Clear1);
-   return true;
-}
+    int      quick_erase;
+    int      complete_erase;
+    int      quick_format;
+    int      complete_format;
+    int      prepare_disc;
 
-void CleanUp(void)
-{
-   DriveSpool::ExitInstance();
+    int      check_writable;
+    int      check_erasable;
+    int      check_formattable;
+    int      check_overwritable;
+    int	     check_formatted;
 
-   while (!DbgMaster::CleanUp()) {
-      DOS->Delay(25);
-   }
+    int      start;
+    int      stop;
+    int      load;
+    int      eject;
+    int      idle;
+    int      standby;
+    int      sleep;
+    int      write_image;
+    int     *read_track;
+    char    *read_to;
+    int      layout_track;
+    int     *writekbps;
+    int     *readkbps;
+    int      testmode;
+    int      closetrack;
+    int      closesession;
+    int      closedisc;
+    int      getwritabletrks;
+    int      writedao;
+    char    *data;
+    char   **audio;
+    int      wait_forever;
+    int      close_tracks;
+    int     *write_protect;
 
-   delete Cfg;
-   LibrarySpool::Exit();
-   return;
+    const char* GetTemplate(void)
+    {
+	return "DRIVE/A,UNIT/A/K/N,SHOWCONTENTS=SC/S,"
+		"QUICKERASE=QERA/S,COMPLETEERASE=CERA/S,QUICKFORMAT=QFMT/S,COMPLETEFORMAT=CFMT/S,PREPAREDISC=PREP/S,"
+		"CHECKWRITABLE=ISWRT/S,CHECKERASABLE=ISERA/S,CHECKFORMATABLE=ISFMT/S,CHECKOVERWRITABLE=ISOVW/S,CHECKFORMATTED/S"
+		"START/S,STOP/S,LOAD/S,EJECT/S,IDLE/S,STANDBY/S,SLEEP/S,"
+	    "WRITEDISC/S,READTRACK/K/N,TO/K,LAYOUTDISC/S,WRITEKBPS/N,READKBPS/N,TESTMODE/S,"
+	    "CLOSETRACK/K/N,CLOSESESSION/S,CLOSEDISC/S,GETWRITABLETRACKS/S,DAOMODE/S,DATATRACK/K,AUDIOTRACKS/K/M,WAITFOREVER/S,CLOSETRACKS/S,WRITEPROTECT/K/N";
+    };
+
+    void Init()
+    {
+	drive                = 0;
+	unit                 = 0;
+	show_contents        = 0;
+	quick_erase          = 0;
+	complete_erase       = 0;
+	prepare_disc         = 0;
+	check_writable       = 0;
+	check_erasable       = 0;
+	check_formattable    = 0;
+	quick_format         = 0;
+	complete_format      = 0;
+	start                = 0;
+	stop                 = 0;
+	load                 = 0;
+	eject                = 0;
+	idle                 = 0;
+	standby              = 0;
+	sleep                = 0;
+	check_overwritable   = 0;
+	write_image          = 0;
+	read_track           = 0;
+	read_to              = 0;
+	layout_track         = 0;
+	readkbps             = 0;
+	writekbps            = 0;
+	testmode             = 0;
+	closetrack           = 0;
+	closesession         = 0;
+	getwritabletrks      = 0;
+	writedao             = 0;
+	data                 = 0;
+	audio                = 0;
+	wait_forever         = 0;
+	closedisc            = 0;
+	write_protect        = 0;
+	close_tracks         = 0;
+    };
 };
 
-void showDetails(const IOptItem *di)
-{
-   DOS->VPrintf("%s %ld\n", ARRAY(
-            di->getItemType() == Item_Disc ? (int)"Disc" :
-            di->getItemType() == Item_Session ? (int)"Session" :
-            di->getItemType() == Item_Track ? (int)"Track" :
-            di->getItemType() == Item_Index ? (int)"Index" : (int)"Unknown",
-            di->getItemNumber()
-            ));
+#define HASH_INSERT(hash, val) (hash).Add(val, #val)
 
-   DOS->VPrintf("\tLocation   : %ld - %ld (%ld blocks)\n", ARRAY(di->getStartAddress(), di->getEndAddress(), di->getBlockCount()));
-   DOS->VPrintf("\tType       : %s\n", ARRAY(di->getDataType() == Data_Unknown   ? (int)"Unknown" :
-            di->getDataType() == Data_Audio     ? (int)"Audio" :
-            di->getDataType() == Data_Mode1     ? (int)"Data, Mode 1" :
-            di->getDataType() == Data_Mode2     ? (int)"Data, Mode 2" :
-            di->getDataType() == Data_Mode2Form1? (int)"Data, Mode 2, Form 1" :
-            di->getDataType() == Data_Mode2Form2? (int)"Data, Mode 2, Form 2" :
-            (int)"Illegal track type."));
-   DOS->VPrintf("\tSec Size   : %ld bytes\n", ARRAY(di->getSectorSize()));
-   DOS->VPrintf("\tBlank      : %s\n", ARRAY(di->isBlank()       ? (int)"Yes"         : (int)"No"));
-   DOS->VPrintf("\tIncomplete : %s\n", ARRAY(di->isComplete()    ? (int)"No"          : (int)"Yes"));
-   DOS->VPrintf("\tCDText     : %s\n", ARRAY(di->hasCDText()     ? (int)"Available"   : (int)"Unavailable"));
-   if (di->hasCDText()) 
-   {
-      DOS->VPrintf("\t- Artist   : %s\n", ARRAY((int)di->getCDTArtist()));
-      DOS->VPrintf("\t- Title    : %s\n", ARRAY((int)di->getCDTTitle()));
-      DOS->VPrintf("\t- Message  : %s\n", ARRAY((int)di->getCDTMessage()));
-      DOS->VPrintf("\t- Lyrics   : %s\n", ARRAY((int)di->getCDTLyrics()));
-      DOS->VPrintf("\t- Composer : %s\n", ARRAY((int)di->getCDTComposer()));
-      DOS->VPrintf("\t- Director : %s\n", ARRAY((int)di->getCDTDirector()));
-   }
-}
+static TagItem our_tags[] =
+{
+    { PLO_NameSpace,      (iptr)"FryingPan"	},
+    { PLO_PluginName,     (iptr)Optical_Name	},
+    { PLO_MinVersion,     Optical_Version	},
+    { PLO_MinRevision,    Optical_Revision	},
+    { 0,		0			}
+};
+
+class Main
+{
+    args     arg;
+    RDArgs  *rda;
+    int      rc;
+    Call2T<void, Main, IDriveClient&, const IDriveStatus&> call;
+    OpticalPlugin& opt;
+    HashT <int32, const char*> operations;
+    HashT <int32, const char*> opstatuses;
+
+
+protected:
+    void buildHashes()
+    {
+	{
+	    /// drive main operations ///////
+	    HASH_INSERT(operations, DRT_Operation_Unknown);
+	    HASH_INSERT(operations, DRT_Operation_Ready);
+	    HASH_INSERT(operations, DRT_Operation_OpeningTray);
+	    HASH_INSERT(operations, DRT_Operation_ClosingTray);
+	    HASH_INSERT(operations, DRT_Operation_IdleNoDisc);
+
+	    ///***************************************** playback control
+	    HASH_INSERT(operations, DRT_Operation_Play);
+	    HASH_INSERT(operations, DRT_Operation_Pause);
+	    HASH_INSERT(operations, DRT_Operation_Read);
+	    /// other operations ////////////
+
+	    ///***************************************** drive control
+	    HASH_INSERT(operations, DRT_Operation_Control_General);
+	    HASH_INSERT(operations, DRT_Operation_Control_Eject);
+	    HASH_INSERT(operations, DRT_Operation_Control_Load);
+	    HASH_INSERT(operations, DRT_Operation_Control_SpinUp);
+	    HASH_INSERT(operations, DRT_Operation_Control_SpinDown);
+	    HASH_INSERT(operations, DRT_Operation_Control_Standby);
+	    HASH_INSERT(operations, DRT_Operation_Control_Lock);
+	    HASH_INSERT(operations, DRT_Operation_Control_Unlock);
+	    ///***************************************** other types may follow.
+
+	    ///***************************************** drive & disc analysis
+	    HASH_INSERT(operations, DRT_Operation_Analyse_General);
+	    HASH_INSERT(operations, DRT_Operation_Analyze_Drive);
+	    HASH_INSERT(operations, DRT_Operation_Analyse_Tracks);
+	    HASH_INSERT(operations, DRT_Operation_Analyse_Indices);
+	    HASH_INSERT(operations, DRT_Operation_Analyse_DataType);
+	    HASH_INSERT(operations, DRT_Operation_Analyse_CDText);
+	    HASH_INSERT(operations, DRT_Operation_Analyse_FreeDB);
+	    HASH_INSERT(operations, DRT_Operation_Analyse_DiscID);
+	    HASH_INSERT(operations, DRT_Operation_Analyse_ControlBlocks);
+	    HASH_INSERT(operations, DRT_Operation_Analyse_Speeds);
+	    HASH_INSERT(operations, DRT_Operation_Analyse_Layout);
+	    ///***************************************** other types may follow.
+
+	    ///***************************************** different types of write
+	    HASH_INSERT(operations, DRT_Operation_Write_General);
+	    HASH_INSERT(operations, DRT_Operation_Write_Calibrate);
+	    HASH_INSERT(operations, DRT_Operation_Write_Allocate);
+	    HASH_INSERT(operations, DRT_Operation_Write_CDText);
+	    HASH_INSERT(operations, DRT_Operation_Write_Data);
+	    HASH_INSERT(operations, DRT_Operation_Write_Synchronize);
+	    HASH_INSERT(operations, DRT_Operation_Write_CloseTrack);
+	    HASH_INSERT(operations, DRT_Operation_Write_CloseSession);
+	    HASH_INSERT(operations, DRT_Operation_Write_CloseDisc);
+	    HASH_INSERT(operations, DRT_Operation_Write_Repair);
+	    ///***************************************** other types may follow.
+
+	    ///***************************************** different types of erase
+	    HASH_INSERT(operations, DRT_Operation_Erase_General);
+	    HASH_INSERT(operations, DRT_Operation_Erase_BlankComplete);
+	    HASH_INSERT(operations, DRT_Operation_Erase_BlankFast);
+	    HASH_INSERT(operations, DRT_Operation_Erase_BlankSession);
+	    HASH_INSERT(operations, DRT_Operation_Erase_FormatComplete);
+	    HASH_INSERT(operations, DRT_Operation_Erase_FormatFast);
+	    HASH_INSERT(operations, DRT_Operation_Erase_FormatSession);
+	};
+
+	{
+	    HASH_INSERT(opstatuses, DRT_OpStatus_Ready);
+	    HASH_INSERT(opstatuses, DRT_OpStatus_InProgress);
+	    HASH_INSERT(opstatuses, DRT_OpStatus_Completed);
+	    HASH_INSERT(opstatuses, DRT_OpStatus_Aborted);
+	};
+    }
+
+public:
+    Main() :
+	rda(0),
+	call(this, &Main::notified),
+	opt(*((OpticalPlugin*)plg->OpenPlugin(our_tags))),
+	operations("*** Unknown ***"),
+	opstatuses("*** Unknown ***")
+    {
+	/*
+	** here's the funny thing:
+	** we still want to work even if another application is running.
+	** therefore we cannot simply call our own code, sorry...
+	*/
+	arg.Init();
+
+	buildHashes();
+
+	if (opt.IsValid())
+	{
+	    rda = DOS->ReadArgs(const_cast<char*>(arg.GetTemplate()), (void**)&arg, 0);
+	    if (rda != NULL) 
+	    {
+		rc = execute(opt, arg);
+	    } 
+	    else
+	    {
+		DOS->PrintFault(ERROR_REQUIRED_ARG_MISSING, programname);
+	    }
+	}
+	else
+	{
+	    DOS->PrintFault(ERROR_OBJECT_NOT_FOUND, programname);
+	    request("Error", "You cannot start me from another directory, sorry.\nI must at least be able to lock onto myself.", "Ok", 0);
+	}
+    }
+
+    ~Main()
+    {
+	if (rda)
+	    DOS->FreeArgs(rda);
+
+	opt.Dispose();
+    }
+
+    void notified(IDriveClient& cl, const IDriveStatus& op)
+    {
+	/*
+	** when this happens, we are NOT ALLOWED to take much time to process
+	** we are called from the context of FryingPan here. it is not delegated
+	*/
+	const char* oname = operations.GetVal(op.operation);
+	const char* sname = opstatuses.GetVal(op.status);
+
+	DOS->VFPrintf(out, "Drive status update:\n"
+		    "	Status     : %lx (%s)\n"
+		    "	Operation  : %lx (%s)\n"
+		    "	Progress   : %ld.%ld\n"
+		    "	Error      : %ld (%lx)\n"
+		    "	Description: %s\n",
+		    ARRAY(op.status, (uint32)sname,
+			  op.operation, (uint32)oname,
+			  op.progress_major, op.progress_minor, 
+			  op.error, op.scsi_error, 
+			  (iptr)op.description));
+    }
+
+    bool waitDiscPresent(IDriveClient *cl)
+    {
+	char tmp[8];
+	DOS->PutStr("Insert disc and press <enter>: ");
+	DOS->FGets(DOS->Input(), tmp, sizeof(tmp));
+	for (int i=0; i<10; i++)
+	{
+	    if (cl->isDiscPresent())
+	    {
+		DOS->VPrintf("got it!\n", 0);
+		return true;
+	    }
+	    DOS->PutStr(".");
+	    DOS->Flush(DOS->Output());
+	    DOS->Delay(50);
+	}
+	DOS->VPrintf("no disc in drive.\n", 0);
+	return false;
+    }
+
+    int execute(OpticalPlugin& opt, args& a)
+    {
+	IDriveClient* dcl = opt->OpenDrive(a.drive, *a.unit);
+
+	dcl->setNotifyCallback(&call);
+
+	if (a.eject)
+	    dcl->eject();
+	else if (a.load)
+	    dcl->load();
+	else if (a.show_contents)
+	    showContents(dcl);
+	else if (a.quick_erase)
+	{
+	    if (waitDiscPresent(dcl))
+		dcl->blank(DRT_Blank_Erase_Fast);
+	}
+	else if (a.complete_erase)
+	{
+	    if (waitDiscPresent(dcl))
+		dcl->blank(DRT_Blank_Erase_Complete);
+	}
+	else if (a.quick_format)
+	{
+	    if (waitDiscPresent(dcl))
+		dcl->blank(DRT_Blank_Format_Fast);
+	}
+	else if (a.complete_format)
+	{
+	    if (waitDiscPresent(dcl))
+		dcl->blank(DRT_Blank_Format_Complete);
+	}
+	else if (a.prepare_disc)
+	{
+	    if (waitDiscPresent(dcl))
+		dcl->blank(DRT_Blank_Default);
+	}
+	else if (a.check_writable)
+	{
+	    if (waitDiscPresent(dcl))
+		DOS->VPrintf("Disc %s wirtable\n", ARRAY((iptr)(dcl->isWritable() ? "is" : "is not")));
+	}
+	else if (a.check_erasable)
+	{
+	    if (waitDiscPresent(dcl))
+		DOS->VPrintf("Disc %s erasable\n", ARRAY((iptr)(dcl->isErasable() ? "is" : "is not")));
+	}
+	else if (a.check_formattable)
+	{
+	    if (waitDiscPresent(dcl))
+		DOS->VPrintf("Disc %s formattable\n", ARRAY((iptr)(dcl->isFormattable() ? "is" : "is not")));
+	}
+	else if (a.check_overwritable)
+	{
+	    if (waitDiscPresent(dcl))
+		DOS->VPrintf("Disc %s overwritable\n", ARRAY((iptr)(dcl->isOverwritable() ? "is" : "is not")));
+	}
+	else if (a.check_formatted)
+	{
+	    if (waitDiscPresent(dcl))
+		DOS->VPrintf("Disc %s formatted\n", ARRAY((iptr)(dcl->isFormatted() ? "is" : "is not")));
+	}
+
+
+	dcl->waitComplete();
+	dcl->dispose();
+	return 0;
+    }
+
+    void showContents(IDriveClient* dcl)
+    {
+	const IOptItem* item = 0;
+
+	if (!waitDiscPresent(dcl))
+	    return;
+	
+	item = dcl->getDiscContents();
+	if (item)
+	{
+	    printTrackInfo(item, true);
+	    item->release();
+	}
+    }
+
+    void printTrackInfo(const IOptItem* item, bool recursive)
+    {
+	DOS->VPrintf("%s %ld\n", ARRAY(
+				       item->getItemType() == Item_Disc ? (int)"Disc" :
+				       item->getItemType() == Item_Session ? (int)"Session" :
+				       item->getItemType() == Item_Track ? (int)"Track" :
+				       item->getItemType() == Item_Index ? (int)"Index" : (int)"Unknown",
+				       item->getItemNumber()
+				      ));
+
+	DOS->VPrintf("\tLocation   : %ld - %ld (%ld blocks)\n", ARRAY(item->getStartAddress(), item->getEndAddress(), item->getBlockCount()));
+	DOS->VPrintf("\tType       : %s\n", ARRAY(item->getDataType() == Data_Unknown   ? (int)"Unknown" :
+						  item->getDataType() == Data_Audio     ? (int)"Audio" :
+						  item->getDataType() == Data_Mode1     ? (int)"Data, Mode 1" :
+						  item->getDataType() == Data_Mode2     ? (int)"Data, Mode 2" :
+						  item->getDataType() == Data_Mode2Form1? (int)"Data, Mode 2, Form 1" :
+						  item->getDataType() == Data_Mode2Form2? (int)"Data, Mode 2, Form 2" :
+						  (int)"Illegal track type."));
+	DOS->VPrintf("\tSec Size   : %ld bytes\n", ARRAY(item->getSectorSize()));
+	DOS->VPrintf("\tBlank      : %s\n", ARRAY(item->isBlank()       ? (int)"Yes"         : (int)"No"));
+	DOS->VPrintf("\tIncomplete : %s\n", ARRAY(item->isComplete()    ? (int)"No"          : (int)"Yes"));
+	DOS->VPrintf("\tIncremental: %s\n", ARRAY(item->isIncremental() ? (iptr)"Yes"        : (iptr)"No"));
+	DOS->VPrintf("\tCDText     : %s\n", ARRAY(item->hasCDText()     ? (int)"Available"   : (int)"Unavailable"));
+	if (item->hasCDText()) 
+	{
+	    DOS->VPrintf("\t- Artist   : %s\n", ARRAY((int)item->getCDTArtist()));
+	    DOS->VPrintf("\t- Title    : %s\n", ARRAY((int)item->getCDTTitle()));
+	    DOS->VPrintf("\t- Message  : %s\n", ARRAY((int)item->getCDTMessage()));
+	    DOS->VPrintf("\t- Lyrics   : %s\n", ARRAY((int)item->getCDTLyrics()));
+	    DOS->VPrintf("\t- Composer : %s\n", ARRAY((int)item->getCDTComposer()));
+	    DOS->VPrintf("\t- Director : %s\n", ARRAY((int)item->getCDTDirector()));
+	}
+
+	if (recursive)
+	{
+	    for (int i=0; i<item->getChildCount(); i++)
+	    {
+		printTrackInfo(item->getChild(i), true);
+	    }
+	}
+    }
+};
 
 int main()
 { 
-   struct args {
-      char    *drive;
-      int     *unit;
-      int      show_contents;
-      int      quick_erase;
-      int      complete_erase;
-      int      quick_format;
-      int      complete_format;
-      int      prepare_disc;
-      int      check_writable;
-      int      check_erasable;
-      int      check_formatable;
-      int      start;
-      int      stop;
-      int      load;
-      int      eject;
-      int      idle;
-      int      standby;
-      int      sleep;
-      int      check_overwritable;
-      int      write_image;
-      int     *read_track;
-      char    *read_to;
-      int      layout_track;
-      int     *writekbps;
-      int     *readkbps;
-      int      testmode;
-      int      closetrack;
-      int      closesession;
-      int      closedisc;
-      int      getwritabletrks;
-      int      writedao;
-      char    *data;
-      char   **audio;
-      int      wait_forever;
-      int      close_tracks;
+    Exec = ExecIFace::GetInstance(SysBase);
+    DOS = DOSIFace::GetInstance(0);
+    plg = PlugLibIFace::GetInstance(0);
 
-      const char* GetTemplate(void)
-      {
-         return "DRIVE/A,UNIT/A/K/N,SHOWCONTENTS=SC/S,QUICKERASE/S,COMPLETEERASE/S,"
-            "QUICKFORMAT/S,COMPLETEFORMAT/S,PREPAREDISC/S,CHECKWRITABLE/S,CHECKERASABLE/S,"
-            "CHECKFORMATABLE/S,START/S,STOP/S,LOAD/S,EJECT/S,IDLE/S,STANDBY/S,SLEEP/S,CHECKOVERWRITABLE/S,"
-            "WRITEDISC/S,READTRACK/K/N,TO/K,LAYOUTDISC/S,WRITEKBPS/N,READKBPS/N,TESTMODE/S,"
-            "CLOSETRACK/K/N,CLOSESESSION/S,CLOSEDISC/S,GETWRITABLETRACKS/S,DAOMODE/S,DATATRACK/K,AUDIOTRACKS/K/M,WAITFOREVER/S,CLOSETRACKS/S";
-      };
+    DOS->GetProgramName(programname, sizeof(programname));
+    out = DOS->Output();
 
-      void Init()
-      {
-         drive                = 0;
-         unit                 = 0;
-         show_contents        = 0;
-         quick_erase          = 0;
-         complete_erase       = 0;
-         prepare_disc         = 0;
-         check_writable       = 0;
-         check_erasable       = 0;
-         check_formatable     = 0;
-         quick_format         = 0;
-         complete_format      = 0;
-         start                = 0;
-         stop                 = 0;
-         load                 = 0;
-         eject                = 0;
-         idle                 = 0;
-         standby              = 0;
-         sleep                = 0;
-         check_overwritable   = 0;
-         write_image          = 0;
-         read_track           = 0;
-         read_to              = 0;
-         layout_track         = 0;
-         readkbps             = 0;
-         writekbps            = 0;
-         testmode             = 0;
-         closetrack           = 0;
-         closesession         = 0;
-         getwritabletrks      = 0;
-         writedao             = 0;
-         data                 = 0;
-         audio                = 0;
-         wait_forever         = 0;
-         closedisc            = 0;
-      };
-   };
+    if (plg != 0)
+    {
+	delete new Main;
+	plg->FreeInstance();
+    }
+    else
+    {
+	DOS->PrintFault(ERROR_OBJECT_NOT_FOUND, programname);
+	request("Error", "If you want to execute me from shell,\nmake sure i can find plug.library.", "Ok", 0);
+    }
 
-   ULONG    dcl;
-   args     arg;
-   RDArgs  *rda;
-   int      rc;
+    DOS->FreeInstance();
+    Exec->FreeInstance();
+}
 
-   arg.Init();
+#if 0
+{
 
-   if (false == SetUp())
-   {
-      return 20;
-   }
-
-
-   rda = DOS->ReadArgs(const_cast<char*>(arg.GetTemplate()), (int32*)&arg, 0);
-
-   if (rda != NULL) 
-   {
-      dcl = DoLibMethodA(ARRAY(DRV_NewDrive, (int)arg.drive, *arg.unit));
-   } 
-   else 
-   {
-      DOS->VPrintf("Bad arguments.\n", 0);
-      CleanUp();
-      return 20;
-   }
    
    if (!dcl)
    {
@@ -244,7 +496,7 @@ int main()
    DOS->VPrintf("Please insert disc in drive (unless already inserted)\n", 0);
 
    
-   if ((long)DoLibMethodA(ARRAY(DRV_WaitForDisc, dcl, arg.wait_forever ? 0xffffffff : 30)) == ODE_NoDisc)
+   if ((iptr)DoLibMethodA(ARRAY(DRV_WaitForDisc, dcl, arg.wait_forever ? 0xffffffff : 30)) == (iptr)ODE_NoDisc)
    {
       DOS->VPrintf("No disc inserted.\n", 0);
       DoLibMethodA(ARRAY(DRV_EndDrive, dcl));
@@ -264,36 +516,6 @@ int main()
 
    DoLibMethodA(ARRAY(DRV_SetAttr, dcl, DRA_Drive_TestMode, arg.testmode));
 
-   if (arg.quick_erase) 
-   {
-      DOS->VPrintf("Blanking... \n", 0);
-      rc = DoLibMethodA(ARRAY(DRV_Blank, dcl, DRT_Blank_Fast));
-      DOS->VPrintf("Blanking result: %ld\n", ARRAY(rc));
-   }
-   else if (arg.complete_erase) 
-   {
-      DOS->VPrintf("Blanking... \n", 0);
-      rc = DoLibMethodA(ARRAY(DRV_Blank, dcl, DRT_Blank_Complete));
-      DOS->VPrintf("Blanking result: %ld\n", ARRAY(rc));
-   }
-   else if (arg.quick_format) 
-   {
-      DOS->VPrintf("Formatting disc... \n", 0);
-      rc = DoLibMethodA(ARRAY(DRV_Format, dcl, DRT_Format_Fast));
-      DOS->VPrintf("Result: %ld\n", ARRAY(rc));
-   }
-   else if (arg.complete_format) 
-   {
-      DOS->VPrintf("Formatting disc... \n", 0);
-      rc = DoLibMethodA(ARRAY(DRV_Format, dcl, DRT_Format_Complete));
-      DOS->VPrintf("Result: %ld\n", ARRAY(rc));
-   }
-   else if (arg.prepare_disc) 
-   {
-      DOS->VPrintf("Preparing disc... \n", 0);
-      rc = DoLibMethodA(ARRAY(DRV_StructureDisc, dcl));
-      DOS->VPrintf("Result: %ld\n", ARRAY(rc));
-   }
    else if (arg.show_contents) 
    {
       int         num;
@@ -326,30 +548,6 @@ int main()
             }
          }
       }
-   }
-   else if (arg.check_writable) 
-   {
-      int         num;
-      num = DoLibMethodA(ARRAY(DRV_GetAttr, dcl, DRA_Disc_IsWritable));
-      DOS->VPrintf("Disc is %swritable.\n", ARRAY(num? (int)"" : (int)"not "));
-   }
-   else if (arg.check_erasable) 
-   {
-      int         num;
-      num = DoLibMethodA(ARRAY(DRV_GetAttr, dcl, DRA_Disc_IsErasable));
-      DOS->VPrintf("Disc is %serasable.\n", ARRAY(num? (int)"" : (int)"not "));
-   }
-   else if (arg.check_formatable) 
-   {
-      int         num;
-      num = DoLibMethodA(ARRAY(DRV_GetAttr, dcl, DRA_Disc_IsFormatable));
-      DOS->VPrintf("Disc is %sformatable.\n", ARRAY(num? (int)"" : (int)"not "));
-   }
-   else if (arg.check_overwritable) 
-   {
-      int         num;
-      num = DoLibMethodA(ARRAY(DRV_GetAttr, dcl, DRA_Disc_IsOverwritable));
-      DOS->VPrintf("Disc is %soverwritable.\n", ARRAY(num? (int)"" : (int)"not "));
    }
    else if ((arg.layout_track) || (arg.write_image))
    {
@@ -608,14 +806,6 @@ int main()
    {
       DoLibMethodA(ARRAY(DRV_ControlUnit, dcl, DRT_Unit_Stop));
    }
-   else if (arg.load) 
-   {
-      DoLibMethodA(ARRAY(DRV_ControlUnit, dcl, DRT_Unit_Load));
-   }
-   else if (arg.eject) 
-   {
-      DoLibMethodA(ARRAY(DRV_ControlUnit, dcl, DRT_Unit_Eject));
-   }
    else if (arg.idle) 
    {
       DoLibMethodA(ARRAY(DRV_ControlUnit, dcl, DRT_Unit_Idle));
@@ -675,6 +865,15 @@ int main()
          }
       }
    }
+   else if (arg.write_protect)
+   {
+      int         num;
+      DOS->VPrintf("Setting write protection status to %s\n", ARRAY((iptr)(*arg.write_protect ? "enabled" : "disabled")));
+      DoLibMethodA(ARRAY( DRV_SetAttr, dcl, DRA_Disc_WriteProtect, *arg.write_protect, 0));
+      DOS->VPrintf("Done. Checking new write protection status\n", 0);
+      DoLibMethodA(ARRAY( DRV_GetAttrs, dcl, DRA_Disc_WriteProtect, (iptr)&num, 0));
+      DOS->VPrintf("Done. New write protection status: %s\n", ARRAY((iptr)(num ? "on" : "off")));
+   }
 
    do 
    {
@@ -687,3 +886,4 @@ int main()
    DoLibMethodA(ARRAY(DRV_EndDrive, dcl));
    CleanUp();
 }
+#endif

@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,17 +10,18 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+
 #include "JobDownload.h"
 
-JobDownload::JobDownload(unsigned long drive, const IOptItem* item, IRegHook *module, const char* name) :
-   Job(drive)
+JobDownload::JobDownload(Globals &glb, iptr drive, const IOptItem* item, ISpec *module, const char* name) :
+   Job(glb, drive)
 {
    this->item     = item;
    this->name     = name;
@@ -46,7 +47,7 @@ void JobDownload::execute()
    if (NULL == item)
       return;
 
-   writer = hook->openWrite(name.Data(), item, rc);
+   writer = hook->openWrite(name.Data(), rc);
 
    if (NULL != writer)
    {
@@ -54,15 +55,13 @@ void JobDownload::execute()
 
       numBlocks = item->getBlockCount();          // this includes block 0. total number of blocks is always end-start+1
       currBlock = 0;
-      writer->setBlockSize(item->getSectorSize());
-      writer->setBlockCount(item->getBlockCount());
-      if (true == writer->setUp())
+      if (true == writer->setUp(item))
       {
          while (currBlock < numBlocks)
          {
             int count = 16 <? (numBlocks-currBlock);
 
-            pOptical->OptDoMethodA(ARRAY(DRV_ReadTrackRelative, Drive, (int)item, currBlock, count, (int)mem));
+            g.Optical->DoMethodA(ARRAY(DRV_ReadTrackRelative, Drive, (int)item, currBlock, count, (int)mem));
             status = writer->writeData(mem, count);
             if (false == status)
                break;
@@ -74,7 +73,6 @@ void JobDownload::execute()
       if (false == status)
       {
          request("Error", "An error occured during download.\nOperation aborted.", "Ok", 0);
-         writer->deleteFiles();
       }
 
       delete [] mem;
@@ -83,9 +81,9 @@ void JobDownload::execute()
    }
 }
 
-unsigned long JobDownload::getProgress()
+uint32 JobDownload::getProgress()
 {
-   unsigned long long s1, s2;
+   uint64 s1, s2;
 
    s2 = numBlocks;
    s1 = currBlock;
@@ -95,7 +93,7 @@ unsigned long JobDownload::getProgress()
       s1 >>= 1;
    }
 
-   return ((long)s1 * 65535) / (long)s2;
+   return ((uint32)s1 * 65535) / (uint32)s2;
 }
 
 const char *JobDownload::getActionName()

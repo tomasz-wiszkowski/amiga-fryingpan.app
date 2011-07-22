@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,12 +10,13 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 
 #ifndef _CLDIRECTORY_H_
 #define _CLDIRECTORY_H_
@@ -38,10 +39,17 @@ class ClDirectory : public ClElement
 
 protected:
    VectorT<ClElement*>           hChildren;
-   unsigned long                 lParentPathID;
-   unsigned long                 lISOPathTableEntrySize;
-   unsigned long                 lJolietPathTableEntrySize;
+   int32			lParentPathID;
+   int32			lISOPathTableEntrySize;
+   int32			lJolietPathTableEntrySize;
    RR_SP                         rr_sp;
+
+private:
+   // generation only.
+   // lISO = ISO size, bytes
+   // lRRCE = RR continuation extension size
+   uint32	    lISO, lRRCE;
+   uint32	    lISOIdx, lRRIdx;
 
 private:
    static bool                   vecDeleteChild(ClElement* const&);
@@ -53,48 +61,52 @@ protected:
 
 protected:
    virtual void                  initialize(char *sName);
-   virtual void                  setJolietPathTableEntrySize(unsigned long lSize);
-   virtual void                  setISOPathTableEntrySize(unsigned long lSize); 
+   virtual void                  setJolietPathTableEntrySize(iptr lSize);
+   virtual void                  setISOPathTableEntrySize(iptr lSize); 
 
-   virtual unsigned long         buildISOPathTableEntry(struct ISOPathRecord *pRec, bool bIsMSB);
-   virtual unsigned long         buildJolietPathTableEntry(struct ISOPathRecord *pRec, bool bIsMSB);
-   virtual unsigned long         buildISODirTable(struct ISODirRecord *pRec);
-   virtual unsigned long         buildJolietDirTable(struct ISOWDirRecord *pRec);   
+   virtual uint32	buildISOPathTableEntry(struct ISOPathRecord *pRec, bool bIsMSB);
+   virtual uint32	buildJolietPathTableEntry(struct ISOPathRecord *pRec, bool bIsMSB);
+   virtual uint32	buildISODirTable(uint8*, uint32);
+   virtual uint32	buildJolietDirTable(uint8*, uint32);
 
    virtual void                  setParentISOEntry(bool bIsISO);
    virtual void                  setParentJolietEntry(bool bIsJoliet);
    virtual void                  setParentRockRidgeEntry(bool bIsRR);
 
-   virtual void                  setParentElementPathID(unsigned long lID);
+   virtual void                  setParentElementPathID(iptr lID);
    
    virtual bool                  setISOLevel(ClName::Level lvl);
    virtual bool                  setISORelaxed(bool state);
 
-   virtual unsigned long         getJolietPathTableEntrySize() const;
-   virtual unsigned long         getISOPathTableEntrySize() const; 
+   virtual uint32   getJolietPathTableEntrySize() const;
+   virtual uint32   getISOPathTableEntrySize() const; 
    virtual void                  rebuild();                    // basically the iso name
    virtual bool                  recalculate();
    virtual void                  freeISOName();
 
 public:
-                                 ClDirectory(ClRoot* pRoot, ClDirectory *pParent);
-                                 ClDirectory(ClRoot* pRoot, ClDirectory *pParent, const ExAllData *ed);
-                                 ClDirectory(ClRoot* pRoot, ClDirectory *pParent, const FileInfoBlock *fib);
-                                 ClDirectory(ClRoot* pRoot, ClDirectory *pParent, const String &sName);
-   virtual                      ~ClDirectory();
-   virtual bool                  isDirectory();
-   virtual bool                  addChild(ClElement *aChild);
-   virtual void                  remChild(ClElement *aChild);
-   virtual bool                  scanDirectory(const String &sDirectory);
-   virtual ClElement            *addChild(const String &sPath);
-   virtual bool                  update();
-   virtual int                   getChildrenCount() const;
-   virtual ClElement            *getChild(int lNum);
+                        ClDirectory(ClRoot* pRoot, ClDirectory *pParent);
+                        ClDirectory(ClRoot* pRoot, ClDirectory *pParent, const ExAllData *ed);
+                        ClDirectory(ClRoot* pRoot, ClDirectory *pParent, const FileInfoBlock *fib);
+                        ClDirectory(ClRoot* pRoot, ClDirectory *pParent, const String &sName);
+   virtual              ~ClDirectory();
+   virtual bool         isDirectory();
+   virtual bool         addChild(ClElement *aChild);
+   virtual void         remChild(ClElement *aChild);
+   virtual bool         scanDirectory(const String &sDirectory);
+   virtual ClElement*	addChild(const String &sPath);
+   virtual bool         update();
+   virtual uint32	getChildrenCount() const;
+   virtual ClElement*	getChild(int lNum);
 
-   virtual void                  setISOEntry(bool bIsISO);
-   virtual void                  setJolietEntry(bool bIsJoliet);
-   virtual void                  setRockRidgeEntry(bool bIsRR);
-   virtual void                  sort();
+   virtual void         setISOEntry(bool bIsISO);
+   virtual void         setJolietEntry(bool bIsJoliet);
+   virtual void         setRockRidgeEntry(bool bIsRR);
+   virtual void         sort();
+
+   virtual bool		setUp();
+   virtual void		cleanUp();
+   virtual ClDirectory* makeDir(const char* name);
 };
 
 #endif //_ISODIRECTORY_H_

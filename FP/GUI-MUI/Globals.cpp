@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,15 +10,17 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
 #include "Globals.h"
 #include <Generic/Locale.h>
+#include <PlugLib/PlugLib.h>
+#include "Plug.h"
 
 using namespace GenNS;
 
@@ -42,7 +44,114 @@ static class Localization::LocaleSet LocaleSets[] =
 
 static const char* LocaleGroup = "GLOBAL";
 
-Globals::Globals()
+static TagItem iso_tags[] =
 {
-   Loc.Add((Localization::LocaleSet*)LocaleSets, LocaleGroup);
+    { PLO_NameSpace,      (iptr)"FryingPan"	},
+    { PLO_PluginName,     (iptr)ISOBuilder_Name },
+    { PLO_MinVersion,     ISOBuilder_Version	},
+    { PLO_MinRevision,    ISOBuilder_Revision	},
+    { 0,		0			}
+};
+
+static TagItem dt_tags[] =
+{
+    { PLO_NameSpace,      (iptr)"FryingPan"	},
+    { PLO_PluginName,     (iptr)DTLib_Name	},
+    { PLO_MinVersion,     DTLib_Version		},
+    { PLO_MinRevision,    DTLib_Revision	},
+    { 0,		0			}
+};
+
+Globals::Globals() :
+    DT(*((DTLibPlugin*)plug->OpenPlugin(dt_tags))),
+    ISO(*((ISOBuilderPlugin*)plug->OpenPlugin(iso_tags)))
+ {
+   Loc.AddGroup((Localization::LocaleSet*)LocaleSets, LocaleGroup);
 }
+   
+void Globals::FormatSpeed(String&s, DiscSpeed& spd, bool mini)
+{
+    String   t;
+	
+    /*
+    ** starting element always the same
+    */
+    s = Loc.FormatNumber(spd.begin_i, spd.begin_f * 100000);
+
+    /*
+    ** now, depending on speed type...
+    */
+    switch (spd.type)
+    {
+	case DIF_Speed_Unknown:
+	    s += "x ";
+	    if (!mini)
+	    {
+		s += "(";
+		s += Loc.FormatNumber(spd.begin_kbps);
+		s += "kBps) ";
+	    }
+	    s += "(\?\?\?)";
+	    break;
+
+	case DIF_Speed_CAV:
+	    s += "~";
+	    s += Loc.FormatNumber(spd.end_i, spd.end_f * 100000);
+	    s += "x ";
+	    if (!mini)
+	    {
+		s += "(";
+		s += Loc.FormatNumber(spd.begin_kbps);
+		s += "~";
+		s += Loc.FormatNumber(spd.end_kbps);
+		s += "kBps) ";
+	    }
+	    s += "(CAV)";
+	    break;
+
+	case DIF_Speed_CLV:
+	    s += "x ";
+	    if (!mini)
+	    {
+		s += "(";
+		s += Loc.FormatNumber(spd.begin_kbps);
+		s += "kBps) ";
+	    }
+	    s += "(CLV)";
+	    break;
+
+	case DIF_Speed_ZCLV:
+	    s += "+";
+	    s += Loc.FormatNumber(spd.end_i, spd.end_f * 100000);
+	    s += "x ";
+	    if (!mini)
+	    {
+		s += "(";
+		s += Loc.FormatNumber(spd.begin_kbps);
+		s += "+";
+		s += Loc.FormatNumber(spd.end_kbps);
+		s += "kBps) ";
+	    }
+	    s += "(Z-CLV)";
+	    break;
+
+	case DIF_Speed_CAVCLV:
+	    s += "->";
+	    s += Loc.FormatNumber(spd.end_i, spd.end_f * 100000);
+	    s += "x ";
+	    if (!mini)
+	    {
+		s += "(";
+		s += Loc.FormatNumber(spd.begin_kbps);
+		s += "->";
+		s += Loc.FormatNumber(spd.end_kbps);
+		s += "kBps) ";
+	    }
+	    s += "(CAV+CLV)";
+	    break;
+    }
+
+    _dx(Lvl_Info, "Speed entry: '%s'", (iptr)s.Data());
+    return;
+}
+

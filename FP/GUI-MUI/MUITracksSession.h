@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,22 +10,23 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 
 #ifndef _GUIMUI_MUITRACKSESSION_H_
 #define _GUIMUI_MUITRACKSSESSION_H_
 
 #include <Generic/HookT.h>
 #include <Generic/LibrarySpool.h>
-#include "Components/MUITree.h"
-#include "Components/MUIPopAsl.h"
+#include <Generic/MUI/MUITree.h>
+#include <Generic/MUI/MUIPopAsl.h>
 #include "MUICommon.h"
-#include <Optical/IOptItem.h>
+#include <libdata/Optical/IOptItem.h>
 #include "Globals.h"
 #include <Generic/ConfigParser.h>
 
@@ -50,8 +51,8 @@ protected:
 
 protected:
    Globals                   &Glb;
-   unsigned long             *all;
-   MUITree                   *tracks;
+   iptr			    *all;
+   GenNS::MUITree	    *tracks;
    ConfigParser              *Config;
    MUIPopAsl                 *target;
 
@@ -66,16 +67,16 @@ protected:
    DbgHandler                *getDebug();
 
 protected:
-   virtual uint32             display(const char**, Entry*);
-   virtual uint32             construct(void*, const IOptItem*);
-   virtual uint32             destruct(void*, Entry*);
-   virtual uint32             button(BtnID, void*);
-   virtual void               addRecurse(unsigned long parent, const IOptItem* data);
+   virtual iptr               display(const char**, Entry*);
+   virtual iptr               construct(void*, const IOptItem*);
+   virtual iptr               destruct(void*, Entry*);
+   virtual iptr               button(BtnID, void*);
+   virtual void               addRecurse(iptr parent, const IOptItem* data);
 
 public:
                               MUITracksSession(ConfigParser *parent, Globals &glb);
    virtual                   ~MUITracksSession();
-   virtual unsigned long     *getObject();
+   virtual iptr		    *getObject();
    virtual bool               start();
    virtual void               stop();
    virtual void               update();

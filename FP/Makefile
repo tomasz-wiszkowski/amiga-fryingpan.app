@@ -25,3 +25,4 @@ OS4_LIBOPTS		=
 	include ../Generic/Makefile.mk
 
 // vim: noet ts=4
+# DO NOT DELETE

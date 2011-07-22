@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,12 +10,13 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 
 #include <Generic/LibrarySpool.h>
 #include "ClElement.h"
@@ -327,7 +328,7 @@ const char *ClElement::getComment() const
  */
 void ClElement::arrangeISODirTable()
 {
-   uint tmp, cur=0;
+   uint32 tmp, cur=0;
    /*
     * remove extensions in this order
     */
@@ -379,7 +380,7 @@ unsigned long ClElement::getRRContinuationSize() const
    if (!isRockRidgeEntry())
       return 0;
 
-   for (int i=0; i<hContExtensions.Count(); i++)
+   for (uint32 i=0; i<hContExtensions.Count(); i++)
    {
       size += hContExtensions[i]->Length();
    }
@@ -434,7 +435,7 @@ unsigned long ClElement::buildRRContinuation(uint8 *buff)
       return 0;
 
    int32 size = 0;
-   for (int i=0; i<hContExtensions.Count(); i++)
+   for (uint32 i=0; i<hContExtensions.Count(); i++)
    {
       buff  = hContExtensions[i]->PutData(buff);
       size += hContExtensions[i]->Length();
@@ -451,7 +452,7 @@ int ClElement::getRRExtensions(uint8 *buff)
       return 0;
 
    int32 size = 0;
-   for (int i=0; i<hExtensions.Count(); i++)
+   for (uint32 i=0; i<hExtensions.Count(); i++)
    {
       buff  = hExtensions[i]->PutData(buff);
       size += hExtensions[i]->Length();
@@ -482,7 +483,7 @@ int ClElement::getRRExtensionsSize() const
    if (!isRockRidgeEntry())
       return 0;
 
-   for (int i=0; i<hExtensions.Count(); i++)
+   for (uint32 i=0; i<hExtensions.Count(); i++)
    {
       size += hExtensions[i]->Length();
    }

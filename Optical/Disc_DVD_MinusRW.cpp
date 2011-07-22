@@ -1,218 +1,180 @@
-/*
- * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation; either version 2.1
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 #include "Headers.h"
 #include "Disc_DVD_MinusRW.h"
+#include "SCSI/scsi_GetConfiguration.h"
 
-Disc_DVD_MinusRW::Disc_DVD_MinusRW(Drive *d) : Disc_DVD_MinusR(d)
+Disc_DVD_MinusRW::Disc_DVD_MinusRW(Drive &d) : 
+    Disc_DVD_MinusR(d),
+    fmt(dio, result)
 {
-   meas = 0;
-   readfmtcaps = 0;
+    meas = 0;
 };
 
-void Disc_DVD_MinusRW::Init(void)
+bool Disc_DVD_MinusRW::Init()
 {
-   Disc_DVD_MinusR::Init();      // MUSI BYC W TEJ KOLEJNOSCI
-   readfmtcaps = new cmd_ReadFormatCapacities(dio);
-   readfmtcaps->Go();
+    if (false == Disc_DVD_MinusR::Init())
+	return false;
+
+    Notify(result(DRT_Operation_Analyse_ControlBlocks));
+
+    fmt.ReadFormats();
+    _D(Lvl_Info, "Disc formatted? : %ld", fmt.IsFormatted());
+    _D(Lvl_Info, "Max capacity    : %ld blocks", fmt.GetMaxCapacity());
+
+    return true;
 }
 
 Disc_DVD_MinusRW::~Disc_DVD_MinusRW(void)
 {
-   delete readfmtcaps;
 };
 
 bool Disc_DVD_MinusRW::IsFormatted(void)
 {
-   if (NULL == readfmtcaps)
-      return false;
-   if (readfmtcaps->IsFormatted())
-      return true;
-   return false;
+    return fmt.IsFormatted();
 }
 
 bool Disc_DVD_MinusRW::IsOverwritable(void)
 {
-   cmd_GetConfiguration::Feature *x;
+    Feature *x;
 
-   if (DiscType() != DRT_Profile_DVD_MinusRW_Restricted)
-      return 0;
+    if (DiscType() != DRT_Profile_DVD_MinusRW_Restricted)
+	return 0;
 
-   x = drive->GetDriveFeature(cmd_GetConfiguration::Feature_RigidOverwrite);
-   if (x)
-      if (x->IsCurrent()) return 1;
+    x = drive.GetFeatures().GetFeature<Feat_RigidOverwrite>();
+    if (x)
+	if (x->IsCurrent()) return 1;
 
-   x = drive->GetDriveFeature(cmd_GetConfiguration::Feature_RestrictedOverwrite);
-   if (x)
-      if (x->IsCurrent()) return 1;
+    x = drive.GetFeatures().GetFeature<Feat_RestrictedOverwrite>();
+    if (x)
+	if (x->IsCurrent()) return 1;
 
-   return 0;
+    return 0;
 }
 
-int Disc_DVD_MinusRW::EraseDisc(int met)
+DriveStatus& Disc_DVD_MinusRW::EraseDisc(DRT_Blank met)
 {
-   cmd_Blank::BlankType type;
-   int                  err;
-   cmd_StartStopUnit    ssu(dio);
+    cmd_StartStopUnit    ssu(dio, result);
+    SCSICommand*	prep = 0;
+    Page<Page_Write> &pw = drive.GetWritePage();
 
-   ssu.setType(cmd_StartStopUnit::StartStop_Start);
-   ssu.Go();
+    ssu.setType(cmd_StartStopUnit::StartStop_Start);
+    ssu.Go();
 
+    Calibrate();
 
-   Page<Page_Write> &pw = drive->GetWritePage();
-   pw->SetWriteType(Page_Write::WriteType_SessionAtOnce);
-   if (drive->SetPage(pw))
-      return ODE_CommandError;
+    switch (met) 
+    {
+	case DRT_Blank_Erase_Complete:
+	    {
+		pw->SetWriteType(Page_Write::WriteType_SessionAtOnce);
+		if (drive.SetPage(pw))
+		    return result.Complete(ODE_CommandError);
 
-   switch (met) {
-      case DRT_Blank_Complete:
-         {
-            type = cmd_Blank::Blank_All;
-            meas = drive->GetHardwareConfig()->DVDMinusInfo()->getCBlankMeas(GetDiscSize(), GetWriteSpeed());
-         }
-         break;
-      case DRT_Blank_Fast:
-         {
-            type = cmd_Blank::Blank_Minimal;
-            meas = drive->GetHardwareConfig()->DVDMinusInfo()->getQBlankMeas(GetDiscSize(), GetWriteSpeed());
-         }
-         break;
-      default:
-         return ODE_IllegalParameter;
-   }
+		cmd_Blank *b = new cmd_Blank(dio, result);
+		meas = drive.GetHardwareConfig()->DVDMinusInfo()->getCBlankMeas(GetDiscSize(), GetWriteSpeed());
+		Notify(result(DRT_Operation_Erase_BlankComplete));
+		b->setType(cmd_Blank::Blank_All, 0);
+		b->setImmediate(true);
+		prep = b;
+	    }
+	    break;
 
-   Calibrate();
+	case DRT_Blank_Erase_Fast:
+	    {
+		pw->SetWriteType(Page_Write::WriteType_SessionAtOnce);
+		if (drive.SetPage(pw))
+		    return result.Complete(ODE_CommandError);
 
-   cmd_Blank  *blk = new cmd_Blank(dio);
-   blk->setType(type, 0);
-   blk->setImmediate(true);
+		cmd_Blank *b = new cmd_Blank(dio, result);
+		meas = drive.GetHardwareConfig()->DVDMinusInfo()->getQBlankMeas(GetDiscSize(), GetWriteSpeed());
+		Notify(result(DRT_Operation_Erase_BlankFast));
+		b->setType(cmd_Blank::Blank_Minimal, 0);
+		b->setImmediate(true);
+		prep = b;
+	    }
+	    break;
 
-   if (meas != 0)
-      meas->begin();
-   err = blk->Go();
-   WaitOpComplete();
-   if (meas != 0)
-      meas->end();
-   meas = 0;
-//   if (err == ODE_OK) Init();
-   RequestUpdate();
-   delete blk;
-   return err;
+	case DRT_Blank_Format_Complete:
+	    {
+		pw->SetWriteType(Page_Write::WriteType_Packet);
+		pw->SetPacketSize(16);
+		if (drive.SetPage(pw))
+		    return result.Complete(ODE_CommandError);
+
+		scsi_Format* f = new scsi_Format(dio, result);
+		meas = drive.GetHardwareConfig()->DVDMinusInfo()->getCFormatMeas(GetDiscSize(), GetWriteSpeed());
+		Notify(result(DRT_Operation_Erase_FormatComplete));
+		f->SetType(true, Format_FullFormat, GetDiscSize(), 16);
+		f->SetImmediate(true);
+		prep = f;
+	    }
+	    break;
+
+	case DRT_Blank_Format_Fast:
+	    {
+		pw->SetWriteType(Page_Write::WriteType_Packet);
+		pw->SetPacketSize(16);
+		if (drive.SetPage(pw))
+		    return result.Complete(ODE_CommandError);
+
+		scsi_Format* f = new scsi_Format(dio, result);
+		meas = drive.GetHardwareConfig()->DVDMinusInfo()->getQFormatMeas(GetDiscSize(), GetWriteSpeed());
+		Notify(result(DRT_Operation_Erase_FormatComplete));
+		f->SetType(true, Format_DVDM_QuickFormat, 0, 16);
+		f->SetImmediate(true);
+		prep = f;
+	    }
+	    break;
+
+	case DRT_Blank_Default:
+	    request("Info", "SORRY NO DEFAULT! F_I_X_M_E!", "OK", 0);
+	    return result.Complete(ODE_IllegalCommand);
+
+	default:
+	    return result.Complete(ODE_IllegalParameter);
+    }
+
+    if (meas != 0)
+	meas->begin();
+    prep->Go();
+    WaitOpComplete();
+    if (meas != 0)
+	meas->end();
+    meas = 0;
+    //   if (err == ODE_OK) Init();
+    RequestUpdate();
+    delete prep;
+    return result;
 }
-
-int Disc_DVD_MinusRW::FormatDisc(int met)
-{
-   cmd_Format  *fmt;
-   int          err;
-   cmd_StartStopUnit    ssu(dio);
-
-   ssu.setType(cmd_StartStopUnit::StartStop_Start);
-   ssu.Go();
-
-   Page<Page_Write> &pw = drive->GetWritePage();
-   pw->SetWriteType(Page_Write::WriteType_Packet);
-   pw->SetPacketSize(16);
-   if (drive->SetPage(pw))
-      return ODE_CommandError;
-
-   Calibrate();
-
-   fmt = new cmd_Format(dio);
-   fmt->setImmediate(true);
-
-   switch (met) 
-   {
-      case DRT_Format_Complete:
-         {
-            _D(Lvl_Info, "Complete format of dvd-rw media requested");
-            fmt->setType(cmd_Format::Format_FullFormat, readfmtcaps->GetMaxCapacity(), 16);
-            meas = drive->GetHardwareConfig()->DVDMinusInfo()->getCFormatMeas(GetDiscSize(), GetWriteSpeed());
-         }
-         break;
-      case DRT_Format_Fast:
-         {
-            _D(Lvl_Info, "Quick format of dvd-rw media requested");
-            fmt->setType(cmd_Format::Format_DVDM_QuickFormat, 0, 16);
-            meas = drive->GetHardwareConfig()->DVDMinusInfo()->getQFormatMeas(GetDiscSize(), GetWriteSpeed());
-         }
-         break;
-   }
-   
-   if (meas != 0)
-      meas->begin();
-   err = fmt->Go();
-   WaitOpComplete();
-   if (meas != 0)
-      meas->end();
-   meas = 0;
-//   if (err == ODE_OK) Init();
-   RequestUpdate();
-   delete fmt;
-   return err;
-}
-
-int Disc_DVD_MinusRW::StructureDisc(void)
-{
-   int err;
-   err = EraseDisc(DRT_Blank_Fast);
-   if (err) return err;
-   err = FormatDisc(DRT_Format_Fast);
-   if (err) return err;
-   return ODE_OK;
-};
 
 int Disc_DVD_MinusRW::DiscType()
 {
-   if (NULL == readfmtcaps)
-      return DRT_Profile_DVD_MinusRW_Sequential; // we dont know if it can be formatted
-   
-   if (readfmtcaps->IsFormatted()) {
-      return DRT_Profile_DVD_MinusRW_Restricted;
-   } else {
-      return DRT_Profile_DVD_MinusRW_Sequential;
-   }
+    if (fmt.IsFormatted())
+	return DRT_Profile_DVD_MinusRW_Restricted;
+    else
+	return DRT_Profile_DVD_MinusRW_Sequential;
 }
 
 bool Disc_DVD_MinusRW::IsWritable()
 {
-//   _D("Checking whether disc is formatted...");
-//   if (!IsFormatted()) 
-//      return false;
-   _D(Lvl_Info, "Checking for writable tracks...");
-   if (GetNextWritableTrack(0))
-      return true;
-   return false;
+    //   _D("Checking whether disc is formatted...");
+    //   if (!IsFormatted()) 
+    //      return false;
+    return Disc_DVD_MinusR::IsWritable();
 }
 
 int16 Disc_DVD_MinusRW::GetOperationProgress()
 {
-   if (meas != 0)
-   {
-      return meas->getProgress();
-   }
-   return Disc::GetOperationProgress();
+    if (meas != 0)
+    {
+	return meas->getProgress();
+    }
+    return Disc::GetOperationProgress();
 }
 
 uint32 Disc_DVD_MinusRW::GetDiscSize()
 {
-   if (0 != readfmtcaps)
-      return readfmtcaps->GetMaxCapacity();
-   return Disc_DVD_MinusR::GetDiscSize();
+    if (fmt.IsFormatted())
+	return fmt.GetMaxCapacity();
+    return Disc_DVD_MinusR::GetDiscSize();
 }
 

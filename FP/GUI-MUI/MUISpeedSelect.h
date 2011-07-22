@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,19 +10,20 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 
 #ifndef _GUIMUI_MUISPEEDSELECT_H_
 #define _GUIMUI_MUISPEEDSELECT_H_
 
 #include "MUICommon.h"
 #include <Generic/ConfigParser.h>
-#include "Components/MUIWindowMenu.h"
+#include <Generic/MUI/MUIWindowMenu.h>
 #include <Generic/HookT.h>
 #include <Generic/VectorT.h>
 #include "Globals.h"
@@ -31,17 +32,17 @@ class MUISpeedSelect : public MUICommon
 {
 protected:
    Globals                   &Glb;
-   VectorT<const char*>       names;
-   VectorT<uint16>            speeds;
-   unsigned long             *cycle;
-   MUIWindowMenu             *menu;
-   unsigned long             *pager;
-   unsigned long             *cyclegroup;
-   HookAttrT<uint, uint>      hook;
+   VectorT<const char*>      names;
+   VectorT<uint16>           speeds;
+   iptr            *cycle;
+   GenNS::MUIWindowMenu     *menu;
+   iptr             *pager;
+   iptr             *cyclegroup;
+   HookAttrT<iptr, iptr>      hook;
    uint32                     id;
 
 protected:
-   HookT<MUISpeedSelect, long, void*>    hHkBtnHook;
+   HookT<MUISpeedSelect, iptr, void*>    hHkBtnHook;
    
 protected:
    enum
@@ -50,7 +51,7 @@ protected:
    };
 
 protected:
-   virtual unsigned long      btnHook(long id, void* data);
+   virtual iptr      btnHook(iptr id, void* data);
    virtual void               rebuildCycle(struct DiscSpeed *, uint16);
    const char*                dupstr(const char* str);
 
@@ -60,7 +61,7 @@ protected:
 public:
                               MUISpeedSelect(Globals &glb);
    virtual                   ~MUISpeedSelect();
-   virtual unsigned long     *getObject();
+   virtual iptr     *getObject();
    virtual void               setSpeeds(struct DiscSpeed*, uint16);
    virtual bool               start();
    virtual void               stop();

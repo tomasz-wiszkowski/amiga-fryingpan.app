@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,18 +10,20 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 
 #ifndef _FP_GUIMUI_GUI_H_
 #define _FP_GUIMUI_GUI_H_
 
 #include "../GUI/GenericUI.h"
-#include "Components/MUI.h"
+#include <Generic/MUI/MUI.h>
+#include <Generic/MUI/MUIWindowMenu.h>
 #include <Generic/GenericMUI.h>
 #include <Generic/HookT.h>
 #include "Globals.h"
@@ -32,7 +34,7 @@
 #include <Generic/Configuration.h>
 
 class MUIPageSelect;
-class MUITracks;
+class MUITracksDataAudio;
 class MUIMedia;
 class MUIContents;
 class MUIDrive;
@@ -40,7 +42,6 @@ class MUISettings;
 class MUIRecord;
 class MUIDriveSelect;
 class MUIPopAction;
-class MUIWindowMenu;
 
 using namespace GenNS;
 
@@ -59,16 +60,21 @@ protected:
       Action_Translate,
       Action_Quit
    };
+
+protected:
+   DRT_DriveStatus      drv_stat;
+   DRT_Operation        drv_oper;
+
 protected:
    Configuration       *Config;
    ConfigParser        *Cfg;
 
    Globals              Glb;
-   unsigned long       *pApp;
-   unsigned long       *pWin;
+   iptr       *pApp;
+   iptr       *pWin;
    MUIPageSelect       *Select;
    MUIDriveSelect      *DriveSelect;
-   MUITracks           *Tracks;
+   MUITracksDataAudio  *Tracks;
    MUIMedia            *Media;
    MUIContents         *Contents;
    MUIDrive            *Drive;
@@ -78,20 +84,21 @@ protected:
    MUIPopAction        *Action;
    MUIWindowMenu       *Menu;
 
-   uint32              *elements;
-   uint32              *pages;
-   uint32              *switchview;
-   uint32              *gauge;
+   iptr                *elements;
+   iptr                *pages;
+   iptr                *switchview;
+   iptr                *gauge;
 
    bool                 bCompact;
 
    Port                *pMsgPort;
    IconIFace           *iicon;
    DiskObject          *appobj;
+   String		statusText;
 
 protected:
    HookT<GUI, void*, void*>               hShowHide;
-   HookT<GUI, void*, long>                hPager;
+   HookT<GUI, void*, iptr>                hPager;
    HookT<GUI, ActionID, void*>            hAction;
    HookT<GUI, EngineMessage, IEngine*>    hEngineCmd;       // as received from engine
    HookT<GUI, EngineMessage, IEngine*>    hEngineMsg;       // as received via dosync()
@@ -99,12 +106,12 @@ protected:
 
    Timer                                 *pTimer;
 protected:
-   uint32                     doShowHide(void*, void*);
-   uint32                     doChangePage(void*, long page);
-   uint32                     doUserAction(ActionID, void*);
-   uint32                     doEngineMessage(EngineMessage, IEngine*);
-   uint32                     doEngineInternalMessage(EngineMessage, IEngine*);
-   uint32                     doEngineChanged(IEngine* old, IEngine* current);
+   iptr                       doShowHide(void*, void*);
+   iptr                       doChangePage(void*, iptr page);
+   iptr                       doUserAction(ActionID, void*);
+   iptr                       doEngineMessage(EngineMessage, IEngine*);
+   iptr                       doEngineInternalMessage(EngineMessage, IEngine*);
+   iptr                       doEngineChanged(IEngine* old, IEngine* current);
 
    void                       setDebug(DbgHandler *h);
    DbgHandler                *getDebug();
@@ -118,6 +125,7 @@ public:
    void                       update();
    void                       periodicUpdate();
    void                       layoutUpdate();
+   void                       driveUpdate(const TagItem* tags);
 };
 
 #endif

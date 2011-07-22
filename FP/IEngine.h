@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,21 +10,24 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 
 #ifndef _IENGINE_H_
 #define _IENGINE_H_
 
 #include "Engine/Calls.h"
-#include <Optical/IOptItem.h>
+#include <libdata/Optical/IOptItem.h>
 #include "ITrack.h"
 #include <Generic/VectorT.h>
 #include <Generic/RWSyncT.h>
+#include <DTLib/DTLib.h>
+#include <DTLib/IData.h>
 
 class Hook;
 class IBrowser;
@@ -35,9 +38,8 @@ enum EngineMessage
    Eng_Update              =  0x1ff00000,
    Eng_JobStarted,
    Eng_JobFinished,
-   Eng_DisableISO,
-   Eng_EnableISO,
    Eng_UpdateLayout,
+   Eng_DriveUpdate,                          // new tags available
 };
 
 class IEngine 
@@ -49,21 +51,6 @@ public:
    virtual const char                    *getName()                                 = 0;
    virtual void                           setName(const char* name)                 = 0;
 
-   virtual VectorT<const char*>          &getDataExports()                          = 0;
-   virtual VectorT<const char*>          &getAudioExports()                         = 0;
-   virtual VectorT<const char*>          &getSessionExports()                       = 0;
-
-   virtual const char*                    getDataExport()                           = 0;
-   virtual const char*                    getAudioExport()                          = 0;
-   virtual const char*                    getSessionExport()                        = 0;
-   virtual void                           setDataExport(const char* name)           = 0;
-   virtual void                           setAudioExport(const char* name)          = 0;
-   virtual void                           setSessionExport(const char* name)        = 0;
-
-   virtual IBrowser*                      getISOBrowser()                           = 0;
-   virtual void                           addISOItem(const char* path)              = 0;
-   virtual void                           remISOItem(ClElement* elem)               = 0;
-   virtual void                           makeISODir(const char* name)              = 0;
    /* 
     * Open & Close device
     */
@@ -83,9 +70,9 @@ public:
    virtual const char                    *getDriveVersion()                         = 0;
 
    virtual DRT_Mechanism                  getMechanismType()                        = 0;
-   virtual unsigned long                  getReadableMedia()                        = 0;
-   virtual unsigned long                  getWritableMedia()                        = 0;
-   virtual unsigned long                  getCapabilities()                         = 0;
+   virtual iptr                  getReadableMedia()                        = 0;
+   virtual iptr                  getWritableMedia()                        = 0;
+   virtual iptr                  getCapabilities()                         = 0;
    virtual DiscSpeed                     *getReadSpeeds()                           = 0;
    virtual DiscSpeed                     *getWriteSpeeds()                          = 0;
    virtual uint16                         getWriteSpeed()                           = 0;
@@ -136,11 +123,10 @@ public:
 
    virtual void                           downloadTrack(const IOptItem*, const char*)  = 0;
    virtual void                           createImage(const char*)                  = 0;
-   virtual void                           addTrack(const char*)                     = 0;
-   virtual void                           remTrack(ITrack *track)                   = 0;
-   virtual RWSyncT< VectorT<ITrack*> >   &tracks()                                  = 0;
+   virtual void                           addTrack(IData*)			    = 0;
+   virtual void                           remTrack(IData*)			    = 0;
+   virtual RWSyncT< VectorT<IData*> >    &tracks()				    = 0;
 
-   virtual bool                           importSession(const char*)                = 0;
    virtual const IOptItem                *getSessionContents()                      = 0;
 
    virtual void                           recordDisc(bool masterize, bool closedisc)= 0;
@@ -151,6 +137,16 @@ public:
    virtual void                           setDOSInhibit(bool flag)                  = 0;
    virtual bool                           getDOSInhibit()                           = 0;
    virtual const char                    *findMatchingDOSDevice()                   = 0;
+
+   virtual bool                           isDiscWriteProtectable()                  = 0;
+   virtual bool                           isDiscWriteProtected()                    = 0;
+   virtual void                           setDiscWriteProtected(bool state)         = 0;
+
+   virtual const TagItem*                 obtainDriveUpdateTags()                   = 0;
+   virtual void                           releaseDriveUpdateTags()                  = 0;
+
+   virtual iptr				  obtainDrive()				    = 0;
+   virtual void				  releaseDrive()			    = 0;
 };
 
 #endif

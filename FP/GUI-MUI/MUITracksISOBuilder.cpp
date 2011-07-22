@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,9 +10,9 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
@@ -24,8 +24,8 @@
 #include <mui/NList_mcc.h>
 #include <mui/NListtree_mcc.h>
 #include <mui/NListview_mcc.h>
-#include "Components/MUIList.h"
-#include "Components/MUITree.h"
+#include <Generic/MUI/MUIList.h>
+#include <Generic/MUI/MUITree.h>
 #include <ISOBuilder/IBrowser.h>
 #include <FP/IEngine.h>
 #include "Globals.h"
@@ -98,24 +98,41 @@ MUITracksISOBuilder::MUITracksISOBuilder(ConfigParser *parent, Globals &glb) :
    Config = new ConfigParser(parent, "ISOBuilder", 0);
 
    setButtonCallBack(hHkButton.GetHook());
-   Glb.Loc.Add((Localization::LocaleSet*)LocaleSets, LocaleGroup);
+   Glb.Loc.AddGroup((Localization::LocaleSet*)LocaleSets, LocaleGroup);
 }
    
 MUITracksISOBuilder::~MUITracksISOBuilder()
 {
+   if (0 != dirs)
+      delete dirs;
+   if (0 != files)
+      delete files;
+   if (0 != popelem)
+      delete popelem;
+   if (0 != req)
+      delete req;
+   if (0 != buildimg)
+      delete buildimg;
+
+   dirs = 0;
+   files = 0;
+   popelem = 0;
+   req = 0;
+   buildimg = 0;
+   all = 0;
    delete Config;
 }
 
-uint32 *MUITracksISOBuilder::getObject()
+iptr *MUITracksISOBuilder::getObject()
 {
    if (NULL != all)
       return all;
 
-   files  = new MUIList("BAR,BAR", true); 
-   dirs   = new MUITree("");
-   req    = new FileReq(Glb.Loc[loc_SelectFiles]);
+   files  = new GenNS::MUIList("BAR,BAR", true); 
+   dirs   = new GenNS::MUITree("");
+   req    = new GenNS::FileReq(Glb.Loc[loc_SelectFiles]);
    req->setMultiSelect(true);
-   buildimg = new FileReq(Glb.Loc[loc_SelectTarget]);
+   buildimg = new GenNS::FileReq(Glb.Loc[loc_SelectTarget]);
    buildimg->setPath(Config->getValue(Cfg_LastImagePath, ""));
 
    dirs->setDisplayHook(hHkTreeDisplayHook.GetHook());
@@ -165,23 +182,6 @@ void MUITracksISOBuilder::stop()
 {
    Config->setValue(Cfg_LastSourcePath, req->getPath());
    Config->setValue(Cfg_LastImagePath, buildimg->getPath());
-   if (0 != dirs)
-      delete dirs;
-   if (0 != files)
-      delete files;
-   if (0 != popelem)
-      delete popelem;
-   if (0 != req)
-      delete req;
-   if (0 != buildimg)
-      delete buildimg;
-
-   dirs = 0;
-   files = 0;
-   popelem = 0;
-   req = 0;
-   buildimg = 0;
-   all = 0;
 }
 
 const char *MUITracksISOBuilder::getName()
@@ -216,13 +216,13 @@ void MUITracksISOBuilder::showContents(IBrowser *b)
 
    files->clear();
 
-   for (int32 i=0; i<d->getChildrenCount(); i++)
+   for (uint32 i=0; i<d->getChildrenCount(); i++)
    {
       files->addItem(d->getChild(i));
    }
 }
 
-uint32 MUITracksISOBuilder::treeDisplayHook(const char** arr, ClDirectory* elem)
+iptr MUITracksISOBuilder::treeDisplayHook(const char** arr, ClDirectory* elem)
 {
    if (elem != 0)
    {
@@ -238,7 +238,7 @@ uint32 MUITracksISOBuilder::treeDisplayHook(const char** arr, ClDirectory* elem)
 void MUITracksISOBuilder::addTreeEntries(uint32 parent, ClDirectory* elem)
 {
    parent = dirs->addEntry(parent, elem);
-   for (int32 i=0; i<elem->getChildrenCount(); i++)
+   for (uint32 i=0; i<elem->getChildrenCount(); i++)
    {
       if (elem->getChild(i)->isDirectory())
       {
@@ -247,7 +247,7 @@ void MUITracksISOBuilder::addTreeEntries(uint32 parent, ClDirectory* elem)
    }
 }
 
-uint32 MUITracksISOBuilder::button(BtnID id, void* data)
+iptr MUITracksISOBuilder::button(BtnID id, void* data)
 {
    IEngine *eng = Glb.CurrentEngine->ObtainRead();
    IBrowser *b = eng->getISOBrowser();
@@ -287,7 +287,7 @@ uint32 MUITracksISOBuilder::button(BtnID id, void* data)
    return 0;
 }
 
-uint32 MUITracksISOBuilder::treeSelect(ClDirectory* dir, void*)
+iptr MUITracksISOBuilder::treeSelect(ClDirectory* dir, void*)
 {
    IEngine *eng = Glb.CurrentEngine->ObtainRead();
    IBrowser *b = eng->getISOBrowser();
@@ -302,7 +302,7 @@ uint32 MUITracksISOBuilder::treeSelect(ClDirectory* dir, void*)
    return 0;
 }
 
-uint32 MUITracksISOBuilder::elemSelect(Entry* elem, void*)
+iptr MUITracksISOBuilder::elemSelect(Entry* elem, void*)
 {
    if (elem != NULL)
    {
@@ -315,7 +315,7 @@ uint32 MUITracksISOBuilder::elemSelect(Entry* elem, void*)
    return 0;
 }
 
-uint32 MUITracksISOBuilder::filesConstruct(void*, ClElement* clelem)
+iptr MUITracksISOBuilder::filesConstruct(void*, ClElement* clelem)
 {
    Entry *e = new Entry;
    e->elem = clelem;
@@ -323,13 +323,13 @@ uint32 MUITracksISOBuilder::filesConstruct(void*, ClElement* clelem)
    return (uint32)e;
 }
 
-uint32 MUITracksISOBuilder::filesDestruct(void*, Entry* e)
+iptr MUITracksISOBuilder::filesDestruct(void*, Entry* e)
 {
    delete e;
    return 0;
 }
 
-uint32 MUITracksISOBuilder::filesDisplay(const char** arr, Entry* e)
+iptr MUITracksISOBuilder::filesDisplay(const char** arr, Entry* e)
 {
    if (e == 0)
    {
@@ -359,7 +359,7 @@ void MUITracksISOBuilder::addFiles(IEngine *e, IBrowser* b)
 {
    VectorT<const char*> &v = req->openReq();
 
-   for (int32 i=0; i<v.Count(); i++)
+   for (uint32 i=0; i<v.Count(); i++)
    {
       e->addISOItem(v[i]);
       //b->getCurrDir()->addChild(v[i]);
@@ -380,7 +380,7 @@ void MUITracksISOBuilder::removeFiles(IEngine *e, IBrowser* b)
 {
    VectorT<Entry*> &v = (VectorT<Entry*>&)files->getSelectedItems();
 
-   for (int32 i=0; i<v.Count(); i++)
+   for (uint32 i=0; i<v.Count(); i++)
    {
       e->remISOItem(v[i]->elem);
    }
@@ -414,7 +414,7 @@ void MUITracksISOBuilder::enableISO()
    muiSetEnabled(ID_BuildImage, true);
 }
    
-uint32 MUITracksISOBuilder::onWBMessage(AppMessage* m, void*)
+iptr MUITracksISOBuilder::onWBMessage(AppMessage* m, void*)
 {
    char *c = new char[1024];
    IEngine *pEng = Glb.CurrentEngine->ObtainRead();

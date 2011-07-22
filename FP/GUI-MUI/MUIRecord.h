@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,12 +10,13 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 
 #ifndef _GUIMUI_MUIRECORD_H_
 #define _GUIMUI_MUIRECORD_H_
@@ -44,7 +45,7 @@ protected:
       ID_PostEject
    };
 protected:
-   uint32             *all;
+   iptr             *all;
    MUISpeedSelect            *speedselect;
    ConfigParser              *Config;
 
@@ -58,7 +59,7 @@ protected:
    bool                       do_posteject;
 
 protected:
-   uint32                     btnClicked(BtnID button, int32 state);
+   iptr                       btnClicked(BtnID button, int32 state);
 
 public:
    /*
@@ -72,7 +73,7 @@ public:
                              ~MUIRecord();
    bool                       start();
    void                       stop();
-   uint32                    *getObject();
+   iptr			    *getObject();
    void                       update();
 };
 

@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,9 +10,9 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
@@ -120,11 +120,18 @@ MUIContents::MUIContents(ConfigParser *parent, Globals &glb) :
    target = 0;
 
    _dx(Lvl_Info, "Updating localization map");
-   glb.Loc.Add((Localization::LocaleSet*)LocaleSets, LocaleGroup);
+   glb.Loc.AddGroup((Localization::LocaleSet*)LocaleSets, LocaleGroup);
 }
 
 MUIContents::~MUIContents()
 {
+   _dx(Lvl_Info, "Disposing tree (%08lx) and popasl (%08lx) objects", (iptr)target, (iptr)tracks);
+   delete target;
+   target = 0;
+   delete tracks;
+   tracks = 0;
+   all = 0;
+
    _dx(Lvl_Info, "Disposing configuration element");
    delete Config;
 }
@@ -134,9 +141,9 @@ DbgHandler *MUIContents::getDebug()
    return Glb.dbg;
 }
 
-unsigned long *MUIContents::getObject()
+iptr *MUIContents::getObject()
 {
-   _dx(Lvl_Info, "Retrieving page content (%lx)", (uint)all);
+   _dx(Lvl_Info, "Retrieving page content (%lx)", (iptr)all);
    if (NULL != all)
       return all;
 
@@ -166,7 +173,7 @@ unsigned long *MUIContents::getObject()
       Child,                     muiButton(Glb.Loc[loc_DownloadTracks], Glb.Loc.Accel(loc_DownloadTracks), ID_DownloadTracks),
    End;
 
-   _dx(Lvl_Info, "Page content created (%08lx)", (uint)all);
+   _dx(Lvl_Info, "Page content created (%08lx)", (iptr)all);
    return all;
 }
 
@@ -181,36 +188,30 @@ void MUIContents::stop()
    _dx(Lvl_Info, "Applying target dir configuration");
    Config->setValue(Cfg_TargetDir, (char*)target->getValue());
 
-   _dx(Lvl_Info, "Disposing tree (%08lx) and popasl (%08lx) objects", (uint)target, (uint)tracks);
-   delete target;
-   target = 0;
-   delete tracks;
-   tracks = 0;
-   all = 0;
    _dx(Lvl_Info, "All done");
 }
 
-unsigned long MUIContents::construct(void*, const IOptItem* item)
+iptr MUIContents::construct(void*, const IOptItem* item)
 {
    Entry *e = new Entry;
-   _dx(Lvl_Info, "Creating new Tree element %08lx (-> %08lx)", (uint)e, (uint)item);
+   _dx(Lvl_Info, "Creating new Tree element %08lx (-> %08lx)", (iptr)e, (iptr)item);
    e->item = item;
    _dx(Lvl_Info, "Locking element");
    e->item->claim();
    _dx(Lvl_Info, "Element set up.");
-   return (unsigned long)e;
+   return (iptr)e;
 }
 
-unsigned long MUIContents::destruct(void*, Entry* e)
+iptr MUIContents::destruct(void*, Entry* e)
 {
-   _dx(Lvl_Info, "Disposing Tree element %08lx (-> %08lx)", (uint)e, (uint)e->item);
+   _dx(Lvl_Info, "Disposing Tree element %08lx (-> %08lx)", (iptr)e, (iptr)e->item);
    e->item->dispose();
    delete e;
    _dx(Lvl_Info, "Done.");
    return 0;
 }
 
-unsigned long MUIContents::display(const char** arr, Entry* e)
+iptr MUIContents::display(const char** arr, Entry* e)
 {
    if (NULL == e)
    {
@@ -223,10 +224,10 @@ unsigned long MUIContents::display(const char** arr, Entry* e)
    {
       String               s1, s2, s3;
       const char          *suffix;
-      unsigned long long   len = 0;
+      uint64		    len = 0;
       int                  fraction = 0;
 
-      _dx(Lvl_Info, "Constructing display for Tree element %08lx (-> %08lx)", (uint)e, (uint)e->item);
+      _dx(Lvl_Info, "Constructing display for Tree element %08lx (-> %08lx)", (iptr)e, (iptr)e->item);
 
       switch (e->item->getItemType())
       {
@@ -287,7 +288,7 @@ unsigned long MUIContents::display(const char** arr, Entry* e)
          e->name += ")";
       }
 
-      len      = (unsigned long long)e->item->getBlockCount() * e->item->getSectorSize();
+      len      = (uint64)e->item->getBlockCount() * e->item->getSectorSize();
       suffix   = "B";
       if (len > 1024)
       {
@@ -311,14 +312,14 @@ unsigned long MUIContents::display(const char** arr, Entry* e)
       s1 = Glb.Loc.FormatNumber(len, fraction * 100000);
       s2 = Glb.Loc.FormatNumber(e->item->getStartAddress());
       s3 = Glb.Loc.FormatNumber(e->item->getEndAddress());
-      e->info.FormatStr("%s %s  (%s - %s)", ARRAY((uint)s1.Data(), (uint)suffix, (uint)s2.Data(), (uint)s3.Data()));
+      e->info.FormatStr("%s %s  (%s - %s)", ARRAY((iptr)s1.Data(), (iptr)suffix, (iptr)s2.Data(), (iptr)s3.Data()));
 
       arr[0] = e->number.Data();
       arr[1] = e->name.Data();
       arr[2] = e->info.Data();
    }
    
-   _dx(Lvl_Info, "Displaying information %s | %s | %s", (uint)arr[0], (uint)arr[1], (uint)arr[2]);
+   _dx(Lvl_Info, "Displaying information %s | %s | %s", (iptr)arr[0], (iptr)arr[1], (iptr)arr[2]);
    _dx(Lvl_Info, "Done.");
    return true;
 }
@@ -343,7 +344,7 @@ void MUIContents::update()
    Glb.CurrentEngine->Release();
 }
 
-void MUIContents::addRecurse(unsigned long parent, const IOptItem* data)
+void MUIContents::addRecurse(iptr parent, const IOptItem* data)
 {
    uint32 item;
 
@@ -364,7 +365,7 @@ void MUIContents::addRecurse(unsigned long parent, const IOptItem* data)
    _dx(Lvl_Info, "All children have been added");
 }
 
-unsigned long MUIContents::button(BtnID id, void*)
+iptr MUIContents::button(BtnID id, void*)
 {
    IEngine *eng = Glb.CurrentEngine->ObtainRead();
 
@@ -396,25 +397,27 @@ unsigned long MUIContents::button(BtnID id, void*)
                break;
             }
 
+#if 0
             if (eng->getDataExport() == 0)
             {
-               request(Glb.Loc[Globals::loc_Req], Glb.Loc[loc_SelectItemExportModule], Glb.Loc[Globals::loc_OK], ARRAY((uint)Glb.Loc[loc_DataExport].Data()));
+               request(Glb.Loc[Globals::loc_Req], Glb.Loc[loc_SelectItemExportModule], Glb.Loc[Globals::loc_OK], ARRAY((iptr)Glb.Loc[loc_DataExport].Data()));
                break;
             }
 
             if (eng->getAudioExport() == 0)
             {
-               request(Glb.Loc[Globals::loc_Req], Glb.Loc[loc_SelectItemExportModule], Glb.Loc[Globals::loc_OK], ARRAY((uint)Glb.Loc[loc_AudioExport].Data()));
+               request(Glb.Loc[Globals::loc_Req], Glb.Loc[loc_SelectItemExportModule], Glb.Loc[Globals::loc_OK], ARRAY((iptr)Glb.Loc[loc_AudioExport].Data()));
                break;
             }
 
             if (eng->getSessionExport() == 0)
             {
-               request(Glb.Loc[Globals::loc_Req], Glb.Loc[loc_SelectItemExportModule], Glb.Loc[Globals::loc_OK], ARRAY((uint)Glb.Loc[loc_SessionExport].Data()));
+               request(Glb.Loc[Globals::loc_Req], Glb.Loc[loc_SelectItemExportModule], Glb.Loc[Globals::loc_OK], ARRAY((iptr)Glb.Loc[loc_SessionExport].Data()));
                break;
             }
+#endif
 
-            for (int i=0; i<vec.Count(); i++)
+            for (uint32 i=0; i<vec.Count(); i++)
             {
                String      pname = dest;
                String      fname;

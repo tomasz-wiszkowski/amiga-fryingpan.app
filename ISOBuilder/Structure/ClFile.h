@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,12 +10,13 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 
 #ifndef _CLFILE_H_
 #define _CLFILE_H_
@@ -24,17 +25,24 @@
 
 class ClFile : public ClElement
 {
-   friend class ClRoot;
+    friend class ClRoot;
+    BPTR fh;
+    iptr size;
+    bool transferring;
+
 protected:
-   virtual void      setISOPosition(unsigned long lPos);
-   virtual void      setISOSize(unsigned long lSize);
-   virtual bool      getData(const Hook* h, void* mem, uint32 len);
+   virtual void      setISOPosition(iptr lPos);
+   virtual void      setISOSize(iptr lSize);
 
 public:
-                     ClFile(ClRoot *pRoot, ClDirectory* pParent, const ExAllData *ed);
-                     ClFile(ClRoot *pRoot, ClDirectory* pParent, const FileInfoBlock *fib);
-   virtual          ~ClFile();
-   virtual bool      isDirectory();
+                    ClFile(ClRoot *pRoot, ClDirectory* pParent, const ExAllData *ed);
+                    ClFile(ClRoot *pRoot, ClDirectory* pParent, const FileInfoBlock *fib);
+   virtual         ~ClFile();
+   virtual bool     isDirectory();
+   virtual uint32   getData(void* buf, uint32 len);
+
+   virtual bool	    setUp();
+   virtual void	    cleanUp();
 };
 
 #endif //_ISOFILE_H_

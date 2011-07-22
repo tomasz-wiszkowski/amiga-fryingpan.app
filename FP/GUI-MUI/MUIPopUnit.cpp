@@ -1,6 +1,6 @@
 /*
  * FryingPan - Amiga CD/DVD Recording Software (User Intnerface and supporting Libraries only)
- * Copyright (C) 2001-2011 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
+ * Copyright (C) 2001-2008 Tomasz Wiszkowski Tomasz.Wiszkowski at gmail.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -10,9 +10,9 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
@@ -24,7 +24,7 @@
 #include <libclass/intuition.h>
 #include "Globals.h"
 #include "../IEngine.h"
-#include <Optical/Optical.h>
+#include <libclass/Optical.h>
 #include <mui/NList_mcc.h>
 
 MUIPopUnit::MUIPopUnit(Globals &glb, const char* ttl, const char** cols) :
@@ -48,12 +48,12 @@ bool MUIPopUnit::onOpen()
    if (0 == sDevice.Length())
       return false;
 
-   if (NULL == Glb.FryingPanEngine)
+   if (!Glb.Engine->IsValid())
       return false;
 
    const ScanData *d, *t;
 
-   d = Glb.FryingPanEngine->scanDevice(sDevice.Data());
+   d = (*Glb.Engine)->ScanDevice(sDevice.Data());
 
    t = d;
 
@@ -63,7 +63,7 @@ bool MUIPopUnit::onOpen()
       t = t->sd_Next;
    }
 
-   Glb.FryingPanEngine->freeScanData(d);
+   (*Glb.Engine)->FreeScanData(d);
 
    return true;
 }
