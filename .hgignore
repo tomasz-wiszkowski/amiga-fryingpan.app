@@ -3,5 +3,6 @@
 /bin-mos
 /bin-aros
 /bin-linux
+^Generic
 cscope\..*
 .*~$
