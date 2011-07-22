@@ -1,0 +1,648 @@
+   ; following settings will be applied to vim: ts=3 noet fmr=;<,;> 
+
+	; ===============================================================
+	; == Please do not touch the following lines unless you know	==
+	; == what you are doing. These lines are not meant to be 		==
+	; == translated, changing them may break install script.			==
+	; ===============================================================	
+	;< paths & constants
+	( set SrcDir			"FryingPan"          								   	)
+	
+	( set ProcDir			"T:Process"														)
+	( set Viewer			"SYS:Utilities/Multiview"									)
+	( set Script			( tackon ProcDir "Script"									))
+
+	( set Icon1				(tackon SrcDir "Icons/FryingPan_8bit_glow.info"		))
+	( set Icon2			 	(tackon SrcDir "Icons/FryingPan_5bit_glow.info"		))
+	( set Icon3				(tackon SrcDir "Icons/FryingPan_48x48.info"			))
+	( set Icon4				(tackon SrcDir "Icons/FryingPan_64x64.info"			))
+	( set Icon5				(tackon SrcDir "Icons/FryingPan_96x96.info"			))
+	( set Icon6				(tackon SrcDir "Icons/FryingPan_48x48_new.info"		))
+	( set Icon7				(tackon SrcDir "Icons/FryingPan_64x64_new.info"		))
+	( set Icon8				(tackon SrcDir "Icons/FryingPan_128x128_new.info"	))
+
+	( set Welcome1	"Welcome to The Frying Pan installation utility.")
+	( set Welcome2 "This program will guide you through the installation of the program on your hard drive.")
+
+	( set ExtractMethod	"Unknown"														)
+
+	( set @app-name		"FryingPan"														)
+	;>
+
+	; ===============================================================
+	; == Here we go.																==
+	; ===============================================================	
+	( Welcome Welcome1 " " Welcome2)
+
+	; ===============================================================
+	; == Ask user for his lingual preferences								==
+	; ===============================================================	
+ 	;< language selection
+	( complete 0 )
+	( set Language 	
+		( askchoice
+			( prompt
+				"Please select your language" 
+			)
+			( help
+				"Before the installation script proceeds, you should select your desired language" 
+			)
+			( choices
+				"English"
+				"Polski"
+				"Français"
+				"Deutsch"
+			)
+			( default
+				0
+			)
+		)
+	)
+	;>
+
+	; ===============================================================
+	; == English language pack follows                             ==
+	; == This is the default language and anything that derives    ==
+	; == shall be overwritten, eventually original text will be		==
+	; == used. Do not encapsulate it with (if) section					==
+	; ===============================================================
+	;< default language (english)
+	( set Prompt1Loc1 "Select the target folder, where Frying Pan shall be installed.")
+	( set Prompt1Loc2 "Note that a folder named FryingPan will be created there.")
+	( set Prompt1Help1 "Please select the target directory using the directory browser.")
+	( set Prompt1Help2 "A new folder will be created there, and all the program files will be extracted into it.")
+	
+	; Extracting main executable file & basic packages
+	( set Prompt2Loc1 "Extracting FryingPan main executable & support binaries to target folder.")
+	( set Prompt2Loc2 "This step does not set up icons nor install skins.")
+
+	; Selecting user-desired icons
+	( set Prompt3Loc1 "Please select the preferred icon for the program.")
+	( set Prompt3Loc1 "Some icon may not work properly if it does not apply to your operating system.")
+	( set Prompt3Help1 "In this step you should select the icon that fits your system and needs best.")
+	( set Prompt3Help2 "Please note that PNG icons are MorphOS specific, so you should choose GlowIcons if you are running OS3 or OS4.")
+
+	; Selecting user-desired images
+	( set Prompt4Loc1 "Please select the preferred startup/shutdown image set.")
+	( set Prompt4Loc1 "These images will accompany you each time you start up or shut down Frying Pan.")
+	( set Prompt4Help1 "These images are so-called splash screens.")
+	( set Prompt4Help2 "You can select either the original image set or any other set that comes.")
+
+	; Selecting user-desired skins
+	( set Prompt5Loc1 "Please select the preferred skin set.")
+	( set Prompt5Loc1 "This defines the look of the Frying Pan.")
+	( set Prompt5Help1 "These images define all the graphic buttons and widgets you will see.")
+	( set Prompt5Help2 "Please click the image set that suits you best.")
+
+	; Selecting optical
+	( set Prompt6Loc1 "Please choose default Optical behaviour.")
+	( set Prompt6Loc1 "Enabling debug version will dump lots of information to screen.")
+	( set Prompt6Help1 "Debug version is really useful when there is a problem with your drive: it helps me find the cure for the problems you encounter.")
+	( set Prompt6Help2 "If you do not have any problems with FryingPan, it's best to choose no-debug version.")
+
+	; Optical types
+	( set OptDebug "Engine with debugging enabled")
+	( set OptNoDebug "Engine with debugging disabled")
+	
+	; Icon names
+	( set Icon1Name "GlowIcons (256 col)")
+	( set Icon2Name "GlowIcons (32 col)")
+	( set Icon3Name "PNG Icon (Drive) (48x48)")
+	( set Icon4Name "PNG Icon (Drive) (64x64)")
+	( set Icon5Name "PNG Icon (Drive) (96x96)")
+	( set Icon6Name "PNG Icon (FryingPan) (48x48)")
+	( set Icon7Name "PNG Icon (FryingPan) (64x64)")
+	( set Icon8Name "PNG Icon (FryingPan) (128x128)")
+
+	; Skin names
+	( set Skin1Name "Original")
+	( set Skin2Name "Skin contributed by Aaron Diezmann")
+	( set Skin3Name "Skin contributed by Highlander")
+
+	; new envarc
+	( set PromptNewEnv "Optical settings are about to be applied. These file contains list of harmful and trusted devices, disc vendors and lowlevel information" )
+
+	; Images
+	( set Image1Name "Original image set" )
+	( set Image2Name "Highlander image set" )
+					
+	; Thanks to..
+	( set Thanks1 "I would like to thank the following people for their help & contribution to the software:")
+	( set Thanks2 "Thank you for installing my software.")
+
+	; Exit messages
+	( set Error1Loc1 	"No suitable decompressor has been found." )
+	( set Error1Loc2	"Please install XAD, LHA or LZX in your C: directory and try again." )
+
+	
+	;>
+
+	; ===============================================================
+	; == Polish language pack follows                              ==
+	; ===============================================================
+	;< polish language
+	( if ( = 1 Language ) 
+		(
+			( set Prompt1Loc1 "Wybierz katalog w którym zostanie zainstalowany FryingPan.")
+			( set Prompt1Loc2 "Nowy katalog o nazwie FryingPan zostanie tam utworzony.")
+			( set Prompt1Help1 "Korzystaj±c z przegl±darki katalogów wybierz katalog docelowy.")
+			( set Prompt1Help2 "Zostanie w nim utworzony nowy katalog, do którego zostan± wypakowane pliki programu.")
+
+			( set Prompt2Loc1 "Instalowanie programu g³ównego oraz bibliotek w katalogu docelowym.")
+			( set Prompt2Loc2 "W tym kroku nie bêd± instalowane ikonki ani skórki.")
+
+			( set Prompt3Loc1 "Wybierz ikonkê dla programu.")
+			( set Prompt3Loc1 "Niektóre ikonki mog± nie dzia³aæ poprawnie, je¶li nie bêd± obs³ugiwane przez twój system operacyjny.")
+			( set Prompt3Help1 "W tym kroku powiniene¶ wybraæ ikonkê, która najbardziej odpowiada tobie i twojemu systemowi.")
+			( set Prompt3Help2 "Zauwa¿, ¿e ikonki PNG s± charakterystyczne dla systemu MorphOS, wiêc dla OS3 lub OS4 powiniene¶ wybraæ GlowIcons.")
+
+			( set Prompt4Loc1 "Wybierz zestaw obrazków startowych / koñcowych.")
+			( set Prompt4Loc1 "Te obrazki bêd± towarzyszy³y ka¿dorazowemu uruchomieniu / zamkniêciu programu.")
+			( set Prompt4Help1 "S± to tzw. Splash-Screen'y.")
+			( set Prompt4Help2 "Mo¿esz skorzystaæ z oryginalnych b±d¼ dowolnych innych obrazków umieszczonych w pakiecie.")
+
+			( set Prompt5Loc1 "Wybierz skórkê, której chcesz u¿ywaæ w programie.")
+			( set Prompt5Loc1 "Skórka definiuje wygl±d programu.")
+			( set Prompt5Help1 "Skórka definiuje wygl±d przycisków graficznych oraz innych elementów GUI w programie.")
+			( set Prompt5Help2 "Wybierz t±, która najbardziej ci odpowiada.")
+
+			; Selecting optical
+			( set Prompt6Loc1 "Wybierz domy¶lne zachowanie programu.")
+			( set Prompt6Loc1 "U¿ycie wersji testowej spowoduje wy¶wietlanie du¿ej ilo¶ci informacji na ekranie podczas pracy.")
+			( set Prompt6Help1 "Wersja testowa jest u¿yteczna przede wszystkim w sytuacjach, gdy wystêpuj± problemy z Twoj± nagrywark± - wygenerowane logi pozwalaj± mi znale¼æ lekarstwo na twój problem.")
+			( set Prompt6Help2 "Je¿eli wszystko dzia³a poprawnie, najlepiej jest u¿yæ wersji normalnej.")
+		
+			( set OptDebug "Wersja testowa (z logami)")
+			( set OptNoDebug "Wersja normalna (bez logów)")
+			
+			( set Icon1Name "Ikona Glow (256 kolorów)")
+			( set Icon2Name "Ikona Glow (32 kolory)")
+			( set Icon3Name "Ikona PNG (Napêd) (48x48)")
+			( set Icon4Name "Ikona PNG (Napêd) (64x64)")
+			( set Icon5Name "Ikona PNG (Napêd) (96x96)")
+			( set Icon6Name "Ikona PNG (Patelnia) (48x48)")
+			( set Icon7Name "Ikona PNG (Patelnia) (64x64)")
+			( set Icon8Name "Ikona PNG (Patelnia) (128x128)")
+
+			( set Skin1Name "Oryginalna skórka")
+			( set Skin2Name "Skórka autorstwa A. Diezmann'a")
+			( set Skin3Name "Skórka autorstwa Highlander'a")
+
+			( set Image1Name "Oryginalny zestaw obrazków" )
+			( set Image2Name "Zestaw obrazków autorstwa Highlander'a" )
+
+			( set Thanks1 "Podziêkowania dla nastêpuj±cych osób za ich pomoc i wk³ad w rozwój projektu:")
+			( set Thanks2 "Dziêkujê ze zainstalowanie mojego oprogramowania.")
+
+			( set Error1Loc1 "Nie znaleziono odpowiedniego dekompresora dla plików lha." )
+			( set Error1Loc2 "Zainstaluj XAD, LHA lub LZX w katalogu C: i spróbuj ponownie." )
+		)
+	)
+	;>
+
+	; ===============================================================
+	; == Pack d'installation en français									==
+	; ===============================================================
+	;< french language
+	( if ( = 2 Language ) 
+		(
+			( set Prompt1Loc1 "Veuillez sélectionner le répertoire d'installation du logiciel Frying Pan.")
+			( set Prompt1Loc2 "Notez qu'un répertoire Frying Pan y sera créé.")
+			( set Prompt1Help1 "Veuillez sélectionner le répertoire d'installation ¿ l'aide du gestionnaire s'il vous plait.")
+			( set Prompt1Help2 "Un nouveau répertoire y sera créé, et tous les fichiers du logiciel y seront extraits.")
+
+			( set Prompt2Loc1 "Extraction des fichiers principaux du logiciel Frying Pan vers le répertoire choisi.")
+			( set Prompt2Loc2 "Cette étape ne concerne ni le choix de l'icône ni celui de l'interface graphique.")
+
+			( set Prompt3Loc1 "Veuillez choisir l'icône du logiciel.")
+			( set Prompt3Loc1 "Certaines icônes peuvent ne pas s'afficher correctement si elles ne correspondent pas ¿ votre syst¿me.")
+			( set Prompt3Help1 "Durant cette étape, vous devez choisir l'icône qui correspond le mieux ¿ votre syst¿me.")
+			( set Prompt3Help2 "Veuillez noter que les icônes PNG sont spécifiques ¿ MorphOS, vous devriez donc choisir les GlowIcons si vous posséder l'Amiga OS3.x ou 4.")
+
+			( set Prompt4Loc1 "Veuillez choisir le set d'images de lancement / sortie.")
+			( set Prompt4Loc1 "Ces images vous seront affichées ¿ chaque lancement et ¿ chaque sortie du logiciel Frying Pan.")
+			( set Prompt4Help1 "Ces images sont apellées 'Images Popup'.")
+			( set Prompt4Help2 "Vous pouvez choisir le set original ou d'autres sets disponibles.")
+
+			( set Prompt5Loc1 "Veuillez choisir l'interface graphique que vous préférez.")
+			( set Prompt5Loc1 "Ces mod¿les définissent l'apparence du logiciel Frying Pan.")
+			( set Prompt5Help1 "Ces images définissent le look de tous les boutons et gadgets que vous verrez.")
+			( set Prompt5Help2 "Veuillez cliquer sur l'image que vous préférez.")
+
+			; Selecting optical
+			( set Prompt6Loc1 "Veuillez sélectionner le comportement par défaut du fichier 'Optical'.")
+			( set Prompt6Loc1 "Activer le mode 'Debug' affichera toutes les informations de debugage du logiciel dans différentes fen¿tres sur votre écran.")
+			( set Prompt6Help1 "La version 'Debug'est tr¿s utile en cas de probl¿mes avec votre graveur : cela aidera l'auteur ¿ les résoudre.")
+			( set Prompt6Help2 "Si vous n'avez aucun probl¿me avec le logiciel Frying Pan, il est préférable de choisir la version 'Non Debug'.")
+
+			( set OptDebug "Version 'Debug' activée")
+			( set OptNoDebug "Version 'Non Debug'")
+
+			( set Icon1Name "GlowIcon (256 couleurs)")
+			( set Icon2Name "GlowIcon (32 couleurs)")
+			( set Icon3Name "Icône PNG ('Lecteur Optique') (48x48)")
+			( set Icon4Name "Icône PNG ('Lecteur Optique') (64x64)")
+			( set Icon5Name "Icône PNG ('Lecteur Optique') (96x96)")
+			( set Icon6Name "Icône PNG ('Po¿le ¿ frire') (48x48)")
+			( set Icon7Name "Icône PNG ('Po¿le ¿ frire') (64x64)")
+			( set Icon8Name "Icône PNG ('Po¿le ¿ frire') (128x128)")
+
+			( set Skin1Name "Interface graphique originale")
+			( set Skin2Name "Interface graphique dessinée par A. Diezmann")
+			( set Skin3Name "Interface graphique dessinée par Highlander")
+
+			( set Image1Name "Images originales" )
+			( set Image2Name "Images dessinée par Highlander" )
+
+			( set Thanks1 "J'aimerais remercier les personnes suivantes pour leur aide et leur contribution ¿ ce logiciel :")
+			( set Thanks2 "Merci d'avoir choisi mon logiciel.")
+			
+			( set Error1Loc1 "Aucun logiciel de désarchivage adéquat n'a été trouvé.")
+			( set Error1Loc2 "Veuillez installer un des logiciels suivant dans le répertoire C: de votre système : XAD Master, LHA ou LZX, et recommencez la procédure d'installation.")
+		)
+	)
+	;>
+
+	; ===============================================================
+	; == German language pack follows                              ==
+	; ===============================================================
+	;< german language
+	( if ( = 3 Language ) 
+		(
+			( set Prompt1Loc1 "Bitte geben sie das Zielverzeichniss an, indem Fryinpan installiert werden soll.")
+			( set Prompt1Loc2 "Es wird dort ein Verzeichniss namens FryinPan angelegt.")
+			( set Prompt1Help1 "Bitte wählen sie das Zielverzeichniss mit den Dateibrowser aus.")
+			( set Prompt1Help2 "Ein neues Verzeichniss wird angelegt, wo alle Programmdaten hinein kopiert werden.")
+
+			; Extracting main executable file & basic packages
+			( set Prompt2Loc1 "Extrahiere das Fryinpan Hauptprogramm & Supportdaten.")
+			( set Prompt2Loc2 "Die jetzige Installationsstufe setzt keine Icons oder Skins fest.")
+			( set Prompt2Help1 "Dieser Vorgang installiert die nötigen Daten in den Zielordner.")
+			( set Prompt2Help2 "Nur die Hauptdaten werden extrahiert.")
+
+			; Selecting user-desired icons
+			( set Prompt3Loc1 "Bitte wählen sie ein bevorzugtes Icon für das Programm." )
+			( set Prompt3Loc1 "Einige Icons könnten nicht richtig angezeigt werden, wenn sie nicht durch ihr Betriebssystem unterstützt werden.")
+			( set Prompt3Help1 "Bitte wählen sie ein Icon aus das ihnen zusagt.")
+			( set Prompt3Help2 "PNG icons werden standardmässig nur von Morphos angezeigt. Wenn sie OS3 oder OS4 benutzen stellen sie sicher das, dass Programm Powericons gestartet ist.")
+
+			; Selecting user-desired images
+			( set Prompt4Loc1 "Bitte wählen sie ihr bevorzugtes Start und Ende Bild aus.")
+			( set Prompt4Loc1 "Diese Bilder werden jedesmal bei dem Start und bei dem Beenden angezeigt.")
+			( set Prompt4Help1 "Diese Bilder nennt man auch splash screens.")
+			( set Prompt4Help2 "Sie können entweder die Standard Bilder oder weitere auswählen.")
+
+			; Selecting user-desired skins
+			( set Prompt5Loc1 "Bitte wählen sie ihr bevorzugten Skin Satz.")
+			( set Prompt5Loc1 "Dieser bestimmt das Aussehen von Fryingpan.")
+			( set Prompt5Help1 "Diese Bilder bestimmen alle grafischen Knöpfe und Hintergründe die sie sehen werden.")
+			( set Prompt5Help2 "Bitte wählen sie ein Bilderset aus, dass ihnen am besten gefällt.")
+	
+			; Selecting optical
+			( set Prompt6Loc1 "Bitte stellen sie das normale verhalten von Fryingpan ein.")
+			( set Prompt6Loc1 "Wenn sie die debug Version aktivieren, werden viele Informationen auf den Bildschirm ausgegeben.")
+			( set Prompt6Help1 "Die Debugversion ist sehr hilfreich um Probleme festzustellen, die ich dadurch leicher beheben kann.")
+			( set Prompt6Help2 "Wenn sie keinerlei Probleme mit Fryingpan haben, empfiehlt es sich die nicht debug Version zu installieren.")
+
+			; Optical types
+			( set OptDebug "Engine mit debugging eingeschaltet")
+			( set OptNoDebug "Engine mit debugging ausgeschaltet")
+
+			; Icon names
+			( set Icon1Name "GlowIcons (256 col)")
+			( set Icon2Name "GlowIcons (32 col)")
+			( set Icon3Name "PNG Icon (Laufwerk) (48x48)")
+			( set Icon4Name "PNG Icon (Laufwerk) (64x64)")
+			( set Icon5Name "PNG Icon (Laufwerk) (96x96)")
+			( set Icon6Name "PNG Icon (FryingPan) (48x48)")
+			( set Icon7Name "PNG Icon (FryingPan) (64x64)")
+			( set Icon8Name "PNG Icon (FryingPan) (128x128)")
+
+			; Skin names
+			( set Skin1Name "Original")
+			( set Skin2Name "Skin erstellt von Aaron Diezmann")
+			( set Skin3Name "Skin erstellt von Highlander")
+	
+			; Images
+			( set Image1Name "Original Bildersatz" )
+			( set Image2Name "Highlander Bildersatz" )
+
+			; Thanks to..
+			( set Thanks1 "Ich danke folgenden Menschen für ihre Hilfe und ihre Unterstützung bei Fryingpan:")
+			( set Thanks2 "Danke das sie sich für Fryinpan entschieden haben.")
+			( set Thanks3 "Sie können das Programm in folgenden Verzeichniss finden:")
+
+			; Exit messages
+			( set Error1Loc1 "Es konnten keine geeigneten Packer gefunden werden." )
+			( set Error1Loc2 "Bitte installieren sie XAD, LHA oder LZX in ihr C: Verzeichniss und versuchen sie es noch einmal.")
+		)
+	)
+	;>
+
+	; ===============================================================
+	; == Procedures and utilities section                          ==
+	; ===============================================================
+	;< CleanupTemp: force deletion of old install files
+	( procedure CleanupTemp
+		( run
+			"delete "
+			ProcDir
+			" force all"
+			( prompt
+			)
+			( help
+			)
+		)
+	)
+	;>
+	;< SetupTemp: create temp directories
+	( procedure SetupTemp
+		( CleanupTemp )
+		( run
+			"makedir "
+			ProcDir
+			( prompt
+			)
+			( help
+			)
+		)
+	)
+	;>
+	;< StopMultiview
+	; this procedure stops multiview. no other idea how to solve it 
+	( procedure StopMultiview
+		;< change dir,
+		( run 
+			"echo cd "
+			ProcDir
+			" >"
+			Script
+			( prompt
+			)
+			( safe )
+			( help
+			)
+		)
+		;>	
+		;< gather all processes :)
+		( run 
+			"echo makedir `status com="
+			Viewer
+			"` >>"
+			Script
+			( prompt
+			)
+			( safe )
+			( help
+			)
+		)
+		;>
+		;< execute! :)
+		( execute
+			Script
+			( prompt	)
+			( help	)
+		)
+		;>	
+		;< now: stop all the processes & cleanup after them
+		( foreach
+			ProcDir
+			"#?"
+			(
+				( run
+					"break "
+					@each-name
+					( prompt	)
+					( help	)
+				)
+			)
+		)
+		;>	
+		;< clean the target directory
+		( run
+			"delete "
+			( tackon
+				ProcDir
+				"#?"
+			)
+			" force all"
+			( safe 	)
+			( prompt )
+			( help 	)
+		)
+		;>
+	)
+	;>	
+	;< FindExtractMethod
+	( procedure FindExtractMethod
+		( if ( = "Unknown" ExtractMethod )
+			( if ( = 1 ( exists "C:XadUnFile" ))
+				( set ExtractMethod "XAD" )		
+				( if ( = 1 ( exists "C:LHA" ))	
+					( set ExtractMethod "LHA" )
+					( if ( = 1 ( exists "C:LZX" ))
+						( set ExtractMethod "LZX" )
+						(
+							( exit Error1Loc1 "\n\n" Error1Loc2 )
+						)
+					)
+				)
+			)
+		)
+	)
+	;>
+	;< Extract (requires Src and Dst vars to be set)
+	( procedure Extract 
+		( set tDst ( tackon Dst "" ))
+		( if ( = "XAD" ExtractMethod )
+			( set Cmd
+				( "C:XadUnFile OW \"%s\" \"%s\"" Src tDst )
+			)
+		)
+
+		( if ( = "LHA" ExtractMethod )
+			( set Cmd
+				( "C:LHA \"%s\" \"%s\"" Src tDst )
+			)
+		)
+
+		( if ( = "LZX" ExtractMethod )
+			( set Cmd
+				( "C:LZX \"%s\" \"%s\"" Src tDst )
+			)
+		)
+
+		( run Cmd
+			( prompt Cmd )
+		)
+	)	
+	;>
+	;< CheckAssign (Src - path) = Res (1 if exists, 0 otherwise)
+	( procedure CheckAssign
+		( if ( = "" ( getassign Src "a" ))
+			( set Res 0 )
+			( set Res 1 )
+		)
+	)
+	;>
+
+	; ===============================================================
+	; == Prepare temp directories												==
+	; ===============================================================
+	( complete 0 )
+	( FindExtractMethod )
+	( SetupTemp )
+	
+	; ===============================================================
+	; == Ask user for target directory.										==
+	; ===============================================================
+	( complete 10 )
+	;< simple prompt, suggesting SYS:Tools
+	( set Target
+		( askdir
+			( prompt
+				Prompt1Loc1 
+				" " 
+				Prompt1Loc2
+			)
+			( help
+				Prompt1Help1
+				" "
+				Prompt1Help2
+			)
+			( default
+				"SYS:Tools"
+			)
+		)
+	)
+	;>
+	
+	; ===============================================================
+	; == Install everything                           					==
+	; ===============================================================
+	( complete 20 )
+	;<
+	( copyfiles 
+		( source "FryingPan" ) 
+		( dest ( tackon Target "FryingPan" ))
+		( all )
+		( infos )
+	)
+	( copyfiles
+		( source "FryingPan/Env/FryingPan/Optical.prefs" )
+		( dest "ENVARC:FryingPan" )
+		( all )
+		( confirm )
+		( prompt PromptNewEnv )
+		( help PromptNewEnv )
+	)
+	( copyfiles
+		( source "ENVARC:FryingPan/Optical.prefs" )
+		( dest "ENV:FryingPan" )
+		( all )
+	)
+	;>
+	
+	; ===============================================================
+	; == Select IconSet to be installed with FryingPan					==
+	; ===============================================================
+	( complete 90 )
+	;< Prompt user for preferred icon set
+	( set IconType
+		( askchoice
+			( prompt
+				Prompt3Loc1
+				"\n"
+				Prompt3Loc2
+			)
+			( help
+				Prompt3Help1
+				"\n"
+				Prompt3Help2
+			)
+			( choices
+				Icon1Name
+				Icon2Name
+				Icon3Name
+				Icon4Name
+				Icon5Name
+				Icon6Name
+				Icon7Name
+				Icon8Name
+			)
+			( default
+				0
+			)
+		)
+	)
+	;>
+	;< copy user chosen icons
+	( set Icon
+		( select IconType
+			Icon1
+			Icon2
+			Icon3
+			Icon4
+			Icon5
+			Icon6
+			Icon7
+			Icon8
+		)
+	)
+	( copyfiles
+		( source	   Icon								)
+		( dest		Target							)
+		( newname	"FryingPan/FryingPan.info"	)
+	)
+	;>	
+	
+	; ===============================================================
+	; == Clean Up																	== 
+	; ===============================================================
+	( complete 98 )
+	;< stop multiview, clean up temp dirs etc
+	( StopMultiview )	
+	( CleanupTemp )
+	( run "assign add Libs: " ( tackon Target "FryingPan/Libs" ))
+	( if 
+	   ( = 1 
+		   ( askbool
+			   ( prompt "Add LIBS: assign to fryingpan libraries? (You do need this)" 	)
+				( help "Assign required for all users" 											)
+				( default 1 )
+			)
+		)
+		( startup "FryingPan"
+		   ( prompt "Adding startup assign" )
+			( help ":]" )
+			( command "Assign ADD Libs: " ( tackon Target "FryingPan/Libs" ))
+		)
+	)
+	;>
+		
+	; ===============================================================
+	; == all done :)																== 
+	; ===============================================================
+	(complete 100)
+	;< set target dir name, display greetings, clean up.
+	( set @default-dest ( tackon Target "FryingPan" ))
+
+	(exit
+		Thanks1
+		"\n\n"
+		"Martin Kuchinka,\n"
+		"Laurent Zorawski,\n"
+		"Szymon Tomzik,\n"
+		"Krister Skrtic,\n"
+		"Giacomo di Giacomo,\n"
+		"Neil Pearson,\n"
+		"Angel Martin,\n"
+		"Sylvio Kurze,\n"
+		"Frederik Laprise,\n"
+		"Jan Zahurancik.\n\n"
+		Thanks2
+		( help )
+	)
+	;>
+	
+

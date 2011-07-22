@@ -1,0 +1,55 @@
+
+The Frying Pan - Change Log
+
+
+The Frying Pan - 1.2.3
+======================
+- 0000064: [Behaviour] Prepared ISO files can not be deleted (Error)
+- 0000060: [GUI] Window does not snapshot (Error)
+- 0000063: [Data Handling / Plugins] icon files missing/mangled (Error)
+- 0000059: [Behaviour] WAV import module loads files forever (Error)
+
+
+The Frying Pan - 1.2.2
+======================
+- 0000056: [Behaviour] Freezing when burning files without READ protection bit set (Error)
+
+
+The Frying Pan - 1.2
+====================
+- 0000049: [Behaviour] debug version crashes (Error)
+- 0000033: [Behaviour] Halts when loading large .iso (Error)
+- 0000048: [Behaviour] Does not update disc usage bar after disc blanking completes (Error)
+- 0000047: [GUI] FP crashes when closed or non-writable disc is inserted (Error)
+- 0000046: [Behaviour] FP shows assertion requesters instead of information when no mpega.library is found. (Error)
+- 0000045: [Behaviour] Search for keys in other locations (Error)
+- 0000043: [Behaviour] Wipeout hit in MUI.interface module (Error)
+- 0000044: [Behaviour] MorphOS binary lacks __abox__ symbol (Error)
+
+
+The Frying Pan - 1.1
+====================
+- 0000040: [Feature Request] Eject after write option (Error)
+- 0000039: [Feature Request] Write speed selection (Error)
+- 0000037: [Feature Request] add 'Blank Before Write' checkbox to write page (Error)
+- 0000031: [Feature Request] "Tool" button that will allow run operations quickly (Error)
+- 0000018: [GUI] FP freezes when a lot of files are added and displays bad drive information (Error)
+- 0000035: [Behaviour] ISO builder is very slow (Error)
+- 0000032: [Behaviour] Add sii####ide.device to list of harmless devices (Error)
+- 0000030: [Behaviour] Fryingpan crashes upon close, when started from an icon (Error)
+- 0000029: [Behaviour] Files in iso builder are not sorted (Error)
+- 0000026: [Behaviour] ASL requesters show weird chars in path when native characters were used previously (Error)
+- 0000028: [Behaviour] Crash, when no file is selected to add to data/audio tracks and user presses OK (Error)
+- 0000027: [Engine] Engine has problems detecting profile of older drives (Error)
+- 0000025: [Behaviour] Program is unable to stop download when file writing fails. (Error)
+- 0000014: [Feature Request] measure time req'd to complete erase/format operation, report it as ETA (Error)
+- 0000015: [GUI] the disc usage bar does not show calculated disc usage (Error)
+- 0000022: [GUI] Drag'n'Drop to Data/Audio tracks does not work (Error)
+- 0000021: [Behaviour] FryingPan does not remember Disc Name and System ID for next session (Error)
+- 0000020: [GUI] Layout size reported improperly (Error)
+- 0000016: [GUI] Iconified FryingPan shows default icon labelled as "unnamed" (Error)
+- 0000019: [Behaviour] FryingPan keeps lock on displayed images after exit (Error)
+- 0000017: [Behaviour] When FP is unable to open UI module, it crashes (Error)
+- 0000011: [Behaviour] a1ide.device is reported as unknown / potentially harmful (Error)
+- 0000012: [GUI] Enforcer hits after selecting dos device (Error)
+- 0000013: [GUI] length of large tracks (>4GB) is displayed improperly (truncated) (Error)
