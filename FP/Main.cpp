@@ -27,7 +27,7 @@ using namespace GenNS;
 extern const char* Version;
 
 const char* Version =
-"$VER: Frying Pan Main application 1.3.2 (C) 2004-2008 Tomasz Wiszkowski";
+"$VER: FryingPan 1.3.2 (06.08.2011) (C) 2004-2008 Tomasz Wiszkowski";
 
 int main()
 {
