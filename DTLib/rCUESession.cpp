@@ -253,7 +253,7 @@ public:
          currpos = 0;
       }
 
-      len = len <? (datalength - currpos);
+      len = len < (datalength - currpos) ? len : (datalength - currpos);
       f->read(mem, len);                  // i don't care if data is valid
       currpos += len;                     // if it's not, i won't interrupt the process
       return len;

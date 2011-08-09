@@ -373,7 +373,7 @@ public:
       else if ((uint64)currpos >= length)
          return 0;
 
-      len = len <? (length - currpos);
+      len = len < (length - currpos) ? len : (length - currpos);
       f->read(mem, len);
       mem = &((char*)mem)[len];
       currpos += len;

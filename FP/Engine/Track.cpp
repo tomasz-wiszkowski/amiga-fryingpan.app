@@ -180,7 +180,7 @@ int Track::read(const IOptItem *optItem, void* mem, const Hook* hk) const
    
    for (uint32 i=0; i<total;)
    {
-      cnt = cnt <? (total - i);
+      cnt = cnt < (total - i) ? cnt : (total - i);
 
       fileReader->readData(optItem, mem, cnt);
       if (false == hook(mem, cnt))

@@ -448,8 +448,8 @@ int Disc_CD_ROM::probeSubChannel()
                   cpos += dlta;
                else 
                   cpos -= dlta;
-               cpos = spos >? cpos;
-               cpos = epos <? cpos;
+               cpos = spos > cpos ? spos : cpos;
+               cpos = epos < cpos ? epos : cpos;
             }
          
             _D(Lvl_Info, "%s: Adding index %ld to track %ld from sector %ld to %ld", (int)__PRETTY_FUNCTION__,

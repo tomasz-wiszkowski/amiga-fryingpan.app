@@ -712,7 +712,7 @@ int Disc::WritePadData(const IOptItem *pDI, int32 len)
   
    while (len)
    {
-      lLen = len <? pDI->getPacketSize();
+      lLen = len < pDI->getPacketSize() ? len : pDI->getPacketSize();
       err = WriteDisc(lSeqSector, lLen, pDI->getSectorSize(), pBuf);
       if (err)
          break;

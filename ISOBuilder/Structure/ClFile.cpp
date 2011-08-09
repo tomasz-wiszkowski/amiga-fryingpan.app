@@ -102,7 +102,7 @@ bool ClFile::getData(const Hook *h, void* mem, uint32 len)
       size++;
    size = (size + 2047) &~ 2047;
 
-   bs = size <? len;
+   bs = size < len ? size : len;
 
    if ((~getProtection()) & 8)
       fh = DOS->Open(getPath().Data(), MODE_OLDFILE);
@@ -116,12 +116,12 @@ bool ClFile::getData(const Hook *h, void* mem, uint32 len)
       // even no file at all (open failed).
 
       if (0 != fh)
-         res = DOS->Read(fh, mem, size <? bs);
+         res = DOS->Read(fh, mem, size < bs ? size : bs);
       else
          res = 0;
 
       if (!res)
-         res = size <? bs;
+         res = size < bs ? size : bs;
 
       res += 2047;
       res &= ~2047;

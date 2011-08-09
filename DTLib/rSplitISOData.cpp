@@ -266,7 +266,7 @@ bool                 rSplitISOData::readData(const IOptItem* item, void* pBuff, 
    }
 
    len = current_size - current_pos;
-   len = len <? pLen;
+   len = len < pLen ? len : pLen;
 
    ASSERT(len > 0);
 

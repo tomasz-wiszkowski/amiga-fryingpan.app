@@ -60,7 +60,7 @@ void JobDownload::execute()
       {
          while (currBlock < numBlocks)
          {
-            int count = 16 <? (numBlocks-currBlock);
+            int count = 16 < (numBlocks-currBlock) ? 16 : (numBlocks-currBlock);
 
             pOptical->OptDoMethodA(ARRAY(DRV_ReadTrackRelative, Drive, (int)item, currBlock, count, (int)mem));
             status = writer->writeData(mem, count);

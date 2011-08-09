@@ -531,13 +531,14 @@ uint                  rMP3Audio::access(void* , MPEGA_ACCESS *acc)
             return 0;
          }
 
-         d = DOS->Read(handle, acc->data.read.buffer, (unsigned)acc->data.read.num_bytes <? (stream_size - current_location));
+         d = DOS->Read(handle, acc->data.read.buffer, 
+             (unsigned)acc->data.read.num_bytes < (stream_size - current_location) ? (unsigned)acc->data.read.num_bytes  : (stream_size - current_location)); 
          current_location += d;
          _D(Lvl_Info, "%s: MPEGA_READ - Read %ld bytes. Advancing position to %ld.", (uint)__PRETTY_FUNCTION__, d, current_location);
          return d;
 
       case MPEGA_BSFUNC_SEEK:
-         current_location = ((unsigned)acc->data.seek.abs_byte_seek_pos <? stream_size);
+         current_location = ((unsigned)acc->data.seek.abs_byte_seek_pos < stream_size ? (unsigned)acc->data.seek.abs_byte_seek_pos : stream_size);
          _D(Lvl_Info, "%s: MPEGA_SEEK - Seeking to relative location %ld.", (uint)__PRETTY_FUNCTION__, current_location);
          DOS->Seek(handle, current_location + stream_start, OFFSET_BEGINNING);
          return 0;

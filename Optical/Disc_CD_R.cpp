@@ -488,8 +488,8 @@ int Disc_CD_R::BeginTrackWrite(const IOptItem*pDI)
 
          while (sects > 0)
          {
-            int32 cnt = sects <? 32;
-            cnt = cnt <? (size - lcnt);
+            int32 cnt = sects < 32 ? sects : 32;
+            cnt = cnt < (size - lcnt) ? cnt : (size - lcnt);
 
             WriteDisc(inpos, cnt, 96, &buff[lcnt * 96]);
 

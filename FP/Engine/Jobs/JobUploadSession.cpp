@@ -71,7 +71,7 @@ void JobUploadSession::execute()
 
          while (size > 0)
          {
-            uint32 trns = 16 <? size;
+            uint32 trns = 16 < size ? 16 : size;
             reader->readData(disc, memblk, trns);
             res = (EOpticalError)pOptical->OptDoMethodA(ARRAY(DRV_WriteSequential, Drive, (int)memblk, trns));
             currBlock += trns;

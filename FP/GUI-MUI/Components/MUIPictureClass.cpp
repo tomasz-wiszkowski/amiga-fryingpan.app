@@ -298,8 +298,8 @@ void MUIPictureClass::openImages()
          PDTA_BitMapHeader,   (int32)&bmhd,
          TAG_DONE,            0));
 
-      width  = width  <? bmhd->bmh_Width;
-      height = height <? bmhd->bmh_Height;
+      width  = width  < bmhd->bmh_Width ? width : bmhd->bmh_Width;
+      height = height < bmhd->bmh_Height ? height : bmhd->bmh_Height;
    }
 
    if (dtimg2 != 0)
@@ -310,8 +310,8 @@ void MUIPictureClass::openImages()
          PDTA_BitMapHeader,   (int32)&bmhd,
          TAG_DONE,            0));
 
-      width  = width  <? bmhd->bmh_Width;
-      height = height <? bmhd->bmh_Height;
+      width  = width  < bmhd->bmh_Width ? width : bmhd->bmh_Width;
+      height = height < bmhd->bmh_Height ? height : bmhd->bmh_Height;
    }
 
    if ((width == 0x7fff) && (height == 0x7fff))

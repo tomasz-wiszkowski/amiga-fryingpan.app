@@ -133,7 +133,7 @@ bool                 wSplitISOData::writeData(void* pBuff, int pLen)
    }
 
    res = max_part_size - current_size;
-   res = (uint32)pLen <? res;
+   res = (uint32)pLen < res ? (uint32)pLen : res;
 
    ASSERT(current_file != 0);
    if (current_file == 0)
