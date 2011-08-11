@@ -1434,10 +1434,12 @@ int32 cmd_Write::onInit(void)
 
 int32 cmd_Write::WriteData(uint32 fsec, uint32 cnt, uint32 secsize, APTR buff)
 {
-   if ((false == AllClear) && (fsec > 999))
-   {
-      memset(buff, fsec >> 8, secsize * cnt);
-   }
+   /* SixK : Here is demo limitation. Sorry we disable this.
+     if ((false == AllClear) && (fsec > 999))
+     {
+        memset(buff, fsec >> 8, secsize * cnt);
+     }
+   */
    
    data        = buff;
    firstsector = fsec;
